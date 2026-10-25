@@ -77,6 +77,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   `backups/wardrobe-20261025-133520.tar.gz` (the last one with the 10 originals); the live photos were all
   item photos with done cutouts, so their originals are now deleted. First backup with cutouts:
   `wardrobe-20261025-133537`. Tested first in `~/projects/wardrobe-next` on a copy of the real data.
+- **2026-10-25: Take photo with the phone camera** (user: "use my phones camera to take the picture and
+  automatically upload it"). `_camera.html` macro: a label-wrapped `<input type=file capture=environment
+  accept=jpeg/png/webp>` that disables the form's other file fields (an empty file part gets a 422 from
+  Starlette) and submits on change. On the Add page (first panel, "Take or upload photos") and in the
+  item page's "+ Add photos". No HTTPS needed (getUserMedia would need it; a file input doesn't). iOS
+  converts HEIC to JPEG because the accept list has no HEIC. 83 tests. Live after backup
+  `wardrobe-20261025-135238`. Not yet tried on the user's phone.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.

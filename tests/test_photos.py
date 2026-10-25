@@ -115,6 +115,20 @@ def test_delete_item_removes_all_photo_files(client, settings):
     assert not any(f.exists() for f in files)
 
 
+def test_take_photo_with_phone_camera(client):
+    """The camera button sends the form at once, with the other file field disabled (not sent)."""
+    r = client.get("/add")
+    assert r.text.count('capture="environment"') == 1 and "Take photo" in r.text
+    r = client.post("/add/photo", files=[("photo", _jpeg(NAVY))], data={"photo_kind": "product"})
+    assert r.status_code == 200 and len(_tokens(r.text)) == 1
+    item_id = _create_with(client, [NAVY])
+    r = client.get(f"/items/{item_id}")
+    assert 'capture="environment"' in r.text
+    r = client.post(f"/items/{item_id}/photos", files=[("photo", _jpeg(RED))],
+                    data={"kind": "fit", "image_url": ""}, follow_redirects=False)
+    assert r.status_code == 303 and [p.kind for p in _item(item_id).photos] == ["fit", "fit"]
+
+
 # ---------- bookmark ----------
 
 def test_add_page_has_bookmarklet(client):

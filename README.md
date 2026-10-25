@@ -30,6 +30,8 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   background is deleted. **Fit pictures keep their background** and are never cut out. If no clear item is
   found (e.g. a fabric close-up), the photo stays as uploaded and **Try again** is offered. Item colors
   are taken from the cutout, so the backdrop doesn't count.
+- **Take photo** (Add page, and "+ Add photos" on an item): on a phone it opens the camera and the photo
+  uploads as soon as you take it; on a computer it's a file picker. Works over plain http on the LAN.
 - **Upload photos:** JPEG up to 40 MP; PNG/GIF up to 8.5 MP; WebP up to 6 MP; 20 MB max file size.
   For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
 - The primary color is pre-filled from the photo (white backgrounds are ignored). Click a swatch or

@@ -22,5 +22,18 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  <script>
+    // Back from the next page (back/forward cache): un-stick a "Take photo" button left at
+    // "Uploading…" and re-enable the file fields it disabled (see _camera.html).
+    addEventListener("pageshow", function (e) {
+      if (!e.persisted) return;
+      document.querySelectorAll(".camera.busy").forEach(function (b) {
+        b.classList.remove("busy");
+        b.querySelector(".camera-label").textContent = b.dataset.label;
+        b.querySelector("input").value = "";
+        b.querySelector("input").form.querySelectorAll("input[type=file]").forEach(function (i) { i.disabled = false; });
+      });
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_camera.html" import camera_button %}
 {% block title %}{{ item.name }} · FORME{% endblock %}
 {% block content %}
 <p><a href="/closet">← Closet</a></p>
@@ -50,8 +51,6 @@
     <details class="panel add-photo" {% if error %}open{% endif %}>
       <summary>+ Add photos</summary>
       <form method="post" action="/items/{{ item.id }}/photos" enctype="multipart/form-data" class="stack">
-        <label>Upload <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
-        <label>or image URL <input type="url" name="image_url" placeholder="https://…/image.jpg"></label>
         <label>Type
           <select name="kind">
             {% for key, label in PHOTO_KINDS.items() %}
@@ -59,7 +58,10 @@
             {% endfor %}
           </select>
         </label>
-        <button class="primary" type="submit">Add</button>
+        {{ camera_button() }}
+        <label>or upload <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
+        <label>or image URL <input type="url" name="image_url" placeholder="https://…/image.jpg"></label>
+        <button type="submit">Add</button>
         <p class="muted small">Item photos get their background removed; fit pictures keep it. Up to {{ MAX_PHOTOS }} photos per item ({{ item.photos|length }} now).</p>
       </form>
     </details>

@@ -1,0 +1,15 @@
+{% from "_icons.html" import icon %}
+{# "Take photo": on a phone it opens the camera (capture=environment) and the form is sent as soon as
+   the photo is taken; on a computer it's a file picker. Lives inside a multipart form whose photo
+   field is "photo"; the form's other file fields are disabled first, so an empty one isn't sent
+   (the server rejects an empty file part). base.html undoes this when the page comes back from the
+   back/forward cache. #}
+{% macro camera_button(label="Take photo", cls="") -%}
+<label class="button primary camera {{ cls }}" data-label="{{ label }}">
+  {{ icon("camera") }}<span class="camera-label">{{ label }}</span>
+  <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment"
+    onchange="if (this.files.length) { var me = this, b = me.closest('label');
+      me.form.querySelectorAll('input[type=file]').forEach(function (i) { if (i !== me) i.disabled = true; });
+      b.classList.add('busy'); b.querySelector('.camera-label').textContent = 'Uploading…'; this.form.submit(); }">
+</label>
+{%- endmacro %}

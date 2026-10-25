@@ -207,6 +207,11 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
 .strip li.current { border-color: var(--accent); }
 .strip img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .add-photo summary { cursor: pointer; font-weight: 500; }
+.camera { position: relative; justify-content: center; }
+.camera.wide { display: flex; width: 100%; padding: .8rem 1rem; font-size: 1.05rem; }
+.camera input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.camera:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.camera.busy { opacity: .7; pointer-events: none; }
 .add-photo form { margin-top: .75rem; }
 .staged { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .75rem; }
 .staged li { display: flex; flex-direction: column; gap: .3rem; }

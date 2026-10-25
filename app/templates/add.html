@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_camera.html" import camera_button %}
 {% block title %}Add item · FORME{% endblock %}
 {% block content %}
 <h1>Add an item</h1>
@@ -6,20 +7,8 @@
 
 <div class="add-grid">
   <section class="panel">
-    <h2>From a product link</h2>
-    <form method="post" action="/add/url" class="stack">
-      <label>Product page URL
-        <input type="url" name="url" value="{{ url }}" placeholder="https://store.example/product/…" required>
-      </label>
-      <button class="primary" type="submit">Fetch product</button>
-      <p class="muted small">Gets the main image, name and brand. Some stores block this. If so, use the bookmark below, or one of the other options.</p>
-    </form>
-  </section>
-
-  <section class="panel">
-    <h2>Upload photos</h2>
+    <h2>Take or upload photos</h2>
     <form method="post" action="/add/photo" enctype="multipart/form-data" class="stack">
-      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
       <label>Photo type
         <select name="photo_kind">
           {% for key, label in PHOTO_KINDS.items() %}
@@ -30,8 +19,24 @@
       <input type="hidden" name="source_url" value="{{ url }}">
       <input type="hidden" name="name" value="{{ name }}">
       <input type="hidden" name="brand" value="{{ brand }}">
-      <button class="primary" type="submit">Upload</button>
+      {{ camera_button(cls="wide") }}
+      <p class="muted small">On a phone this opens the camera; the photo uploads as soon as you take it.</p>
+      <label>or choose photos
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
+      </label>
+      <button type="submit">Upload</button>
       <p class="muted small">Up to {{ MAX_PER_REQUEST }} at once. JPEG, PNG or WebP, 20 MB each. You can change each photo's type on the next page. Item photos get their background removed; fit pictures keep it.</p>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>From a product link</h2>
+    <form method="post" action="/add/url" class="stack">
+      <label>Product page URL
+        <input type="url" name="url" value="{{ url }}" placeholder="https://store.example/product/…" required>
+      </label>
+      <button class="primary" type="submit">Fetch product</button>
+      <p class="muted small">Gets the main image, name and brand. Some stores block this. If so, use the bookmark below, or one of the other options.</p>
     </form>
   </section>
 

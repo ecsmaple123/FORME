@@ -284,13 +284,6 @@ def add_note(session: Session, text: str) -> Optional[StylistNote]:
     return note
 
 
-def delete_note(session: Session, note_id: int) -> None:
-    note = session.get(StylistNote, note_id)
-    if note is not None:
-        session.delete(note)
-        session.commit()
-
-
 def counts(session: Session) -> Dict[str, int]:
     rows = session.exec(select(Suggestion.verdict).where(Suggestion.verdict != "")).all()
     return {v: sum(1 for r in rows if r == v) for v in VERDICTS}

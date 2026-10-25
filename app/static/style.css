@@ -403,20 +403,10 @@ main section[id], main [id].panel { scroll-margin-top: 5rem; }
 .ask-busy { display: none; }
 form.htmx-request .ask-busy { display: inline; }
 form.htmx-request .ask-label { display: none; }
-.stylist-notes { margin-top: 1rem; }
-.stylist-notes summary { display: flex; align-items: baseline; gap: .6rem; cursor: pointer; list-style: none; }
-.stylist-notes summary::-webkit-details-marker { display: none; }
-.stylist-notes summary h2 { margin: 0; }
-.stylist-notes summary::after { content: "▾"; margin-left: auto; font-size: 1.25rem; line-height: 1; color: var(--muted); transition: transform .15s; }
-.stylist-notes:not([open]) summary::after { transform: rotate(-90deg); }
-.stylist-notes > .stack { margin-top: .9rem; }
+.stylist-notes { margin-top: 1rem; display: grid; gap: .5rem; }
+.stylist-notes p { margin: 0; }
 .note-add { display: flex; gap: .5rem; }
 .note-add input { flex: 1; min-width: 0; }
-.note-list { list-style: none; margin: 0; padding: 0; }
-.note-list li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem 0; border-top: 1px solid var(--line); }
-.note-list li:first-child { border-top: 0; }
-.note-list span { overflow-wrap: anywhere; }
-.note-delete { padding: .3rem .45rem; flex: none; }
 .stylist-setup ol { margin: 0; padding-left: 1.25rem; }
 .stylist-setup li + li { margin-top: .4rem; }
 @media (prefers-reduced-motion: reduce) { .pick-skeleton, .suggestion.fresh { animation: none; } }

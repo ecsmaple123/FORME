@@ -28,7 +28,7 @@
     {% else %}<span class="muted small">Set a <a href="/settings#location">weather location</a> to dress for the weather.</span>{% endif %}
     <button class="primary" type="submit">{{ icon("sparkle") }} <span class="ask-label">Suggest outfits</span><span class="ask-busy">Thinking…</span></button>
   </div>
-  <p class="muted small">It learns from your 👍 and 👎 ({{ counts.like }} liked, {{ counts.dislike }} disliked so far), what you tell it below, the outfits you save, and <a href="/settings#stylist">your style</a>.</p>
+  <p class="muted small">It learns from your 👍 and 👎 ({{ counts.like }} liked, {{ counts.dislike }} disliked so far), what you tell it, the outfits you save, and <a href="/settings#stylist">your style</a>.</p>
 </form>
 {% include "_stylist_notes.html" %}
 {% endif %}

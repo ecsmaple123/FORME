@@ -111,8 +111,9 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   git-ignored). `gemini-3.8-flash` hung (0 bytes after 45 s) for this key, so the default became
   `gemini-3.5-flash` (~3 s); `gemini-3.5-flash-lite` (~1 s) is the fallback.
 - **2026-10-25: Tell your stylist** (user: "somewhere on the stylist page for me to give direct feedback
-  to the ai for it to remember"). Fold-out under the ask form on /stylist (open while empty or right
-  after an edit, folded with a count otherwise): add a note, delete one. Table `stylist_note`
+  to the ai for it to remember"). A box under the ask form on /stylist: type, Remember, "Saved." The notes are never
+  listed (user: "don't show me the notes, just save them cause it is just clutter"), so there's no
+  delete in the UI; a newer note overrides an older one. Table `stylist_note`
   (migration 0009); the newest 50 go into every prompt, newest first, and the rules say newer notes win.
   "Forget my likes and dislikes" leaves them alone. 103 tests. Live after backup `wardrobe-20261025-175927`.
 
@@ -314,8 +315,8 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   `#stylist-error` out of band), `POST /suggestions/{id}/verdict` (where=stylist|picks; clicking the
   chosen button again clears it), `POST /suggestions/{id}/save` (auto layout, outfit source "ai",
   which is *not* fed back as the user's own taste), `/studio?suggestion=id`, `POST /settings/stylist`,
-  `POST /stylist/forget`, `POST /stylist/notes`, `POST /stylist/notes/{id}/delete` (htmx swaps
-  `#notes`, template `_stylist_notes.html`). `outfits.auto_board` lays items out in two columns.
+  `POST /stylist/forget`, `POST /stylist/notes` (htmx swaps the
+  `#notes` form, template `_stylist_notes.html`). `outfits.auto_board` lays items out in two columns.
 - Tests use a fake Gemini (MockTransport on `ai._client`); conftest blanks GEMINI_API_KEY so no test
   can reach the real API even if `.env` has a key.
 

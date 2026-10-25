@@ -273,30 +273,25 @@ def test_migration_0008(tmp_path, monkeypatch):
     get_settings.cache_clear()
 
 
-def test_notes_are_remembered_until_deleted(client, gemini):
+def test_notes_are_saved_not_shown_and_remembered(client, gemini):
     ids = _closet(client)
     gemini.reply = {"outfits": [{"title": "A", "item_ids": [ids.coat], "reason": "."}]}
     assert "Tell your stylist" in client.get("/stylist").text
     r = client.post("/stylist/notes", data={"text": "  no   shorts, ever "}, headers={"HX-Request": "true"})
-    assert r.status_code == 200 and 'id="notes"' in r.text and "no shorts, ever" in r.text
+    assert r.status_code == 200 and 'id="notes"' in r.text and "Saved." in r.text
+    assert "no shorts" not in r.text  # notes are never listed
     client.post("/stylist/notes", data={"text": "more earth tones"}, headers={"HX-Request": "true"})
-    client.post("/stylist/notes", data={"text": "   "})  # empty: ignored
+    r = client.post("/stylist/notes", data={"text": "   "}, headers={"HX-Request": "true"})
+    assert "Saved." not in r.text  # empty: ignored
     r = client.post("/stylist/notes", data={"text": "x"}, follow_redirects=False)
     assert r.headers["location"] == "/stylist#notes"
+    assert "earth tones" not in client.get("/stylist").text
     _ask(client)
     text = gemini.calls[-1].text
     assert 'told you directly (newest first; follow these):\n- "x"\n- "more earth tones"\n- "no shorts, ever"' in text
-
-    from app.models import StylistNote
-    with Session(get_engine()) as s:
-        first = s.exec(select(StylistNote).order_by(StylistNote.id)).first()
-    r = client.post(f"/stylist/notes/{first.id}/delete", headers={"HX-Request": "true"})
-    assert "no shorts" not in r.text and "more earth tones" in r.text
-    client.post("/stylist/notes/9999/delete")  # already gone: fine
-    _ask(client)
-    assert "no shorts" not in gemini.calls[-1].text
     client.post("/stylist/forget")  # forgetting likes keeps the notes
-    assert "more earth tones" in client.get("/stylist").text
+    _ask(client)
+    assert "more earth tones" in gemini.calls[-1].text
 
 
 def test_migration_0009(tmp_path, monkeypatch):

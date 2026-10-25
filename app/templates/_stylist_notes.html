@@ -1,31 +1,12 @@
-{% from "_icons.html" import icon %}
-{# "Tell your stylist": notes the user gives the stylist directly, sent with every request until
-   deleted. htmx swaps this whole block after adding or deleting a note (`keep_open`). Folded away
-   once there are notes, so the suggestions stay near the top. #}
-<details class="panel stylist-notes" id="notes"{% if keep_open or not notes %} open{% endif %}>
-  <summary><h2>Tell your stylist</h2>{% if notes %}<span class="muted small">{{ notes|length }} note{{ "s" if notes|length != 1 }}</span>{% endif %}</summary>
-  <div class="stack">
-  <form method="post" action="/stylist/notes" hx-post="/stylist/notes" hx-target="#notes"
-        hx-swap="outerHTML" hx-disabled-elt="find button" class="note-add">
-    <input type="text" name="text" maxlength="300" required aria-label="Something for the stylist to remember"
+{# "Tell your stylist": a note the user gives the stylist directly, sent with every request. The
+   notes aren't listed (the user found the list clutter); htmx swaps this form after saving. #}
+<form class="panel stylist-notes" id="notes" method="post" action="/stylist/notes" hx-post="/stylist/notes"
+      hx-target="#notes" hx-swap="outerHTML" hx-disabled-elt="find button">
+  <label for="note-text">Tell your stylist something to remember</label>
+  <div class="note-add">
+    <input type="text" id="note-text" name="text" maxlength="300" required
            placeholder="e.g. I never wear shorts">
     <button class="primary" type="submit">Remember</button>
-  </form>
-  {% if notes %}
-  <ul class="note-list">
-    {% for n in notes %}
-    <li>
-      <span>{{ n.text }}</span>
-      <form method="post" action="/stylist/notes/{{ n.id }}/delete" hx-post="/stylist/notes/{{ n.id }}/delete"
-            hx-target="#notes" hx-swap="outerHTML">
-        <button type="submit" class="ghost note-delete" title="Forget this">{{ icon("trash", label="Forget this") }}</button>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-  <p class="muted small">The stylist reads these every time. Newer notes win if two disagree.</p>
-  {% else %}
-  <p class="muted small">Anything you want it to always keep in mind: what you never wear, colours you love, how you dress for work.</p>
-  {% endif %}
   </div>
-</details>
+  {% if saved %}<p class="muted small" role="status">Saved. Your stylist will remember that.</p>{% endif %}
+</form>

@@ -1,0 +1,22 @@
+{% from "_board.html" import board %}
+{# One stylist suggestion (`sug` from routes/stylist.view): the outfit laid out, why, and actions. #}
+<li class="card suggestion{{ ' fresh' if fresh }}" id="suggestion-{{ sug.s.id }}">
+  {% if sug.items %}{{ board(sug.outfit) }}{% else %}<div class="board"><p class="board-hint shown">These items were deleted.</p></div>{% endif %}
+  <div class="card-body stack-tight">
+    <div class="card-title">{{ sug.s.title }}</div>
+    <p class="small sug-reason">{{ sug.s.reason }}</p>
+    <p class="muted small sug-items">{% for i in sug.items %}<a href="/items/{{ i.id }}">{{ i.name }}</a>{{ ", " if not loop.last }}{% endfor %}</p>
+    {% if sug.s.request %}<p class="muted small">For: {{ sug.s.request }}</p>{% endif %}
+    {% with s = sug.s, where = "stylist", target = "closest .suggestion" %}{% include "_verdict.html" %}{% endwith %}
+    {% if sug.items %}
+    <div class="sug-actions">
+      {% if sug.s.outfit_id %}
+      <a class="button" href="/outfits/{{ sug.s.outfit_id }}">Saved ✓</a>
+      {% else %}
+      <form method="post" action="/suggestions/{{ sug.s.id }}/save" class="inline-mini"><button class="primary" type="submit">Save as outfit</button></form>
+      {% endif %}
+      <a class="button ghost" href="/studio?suggestion={{ sug.s.id }}">Edit in Studio</a>
+    </div>
+    {% endif %}
+  </div>
+</li>

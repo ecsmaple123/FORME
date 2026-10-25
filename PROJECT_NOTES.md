@@ -102,6 +102,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   `backdrop-filter` makes it the containing block for `position: fixed` children, so it's switched off
   on phones. Checked with CDP screenshots (phone/tablet/desktop, light/dark). 91 tests. Live after backup
   `wardrobe-20261025-151513`.
+- **2026-10-25: AI stylist (Gemini free tier)** (user: "I think we can go with gemini free, because I want
+  it to be my stylist as well and remember picks I like and dislike"). Details in "Stylist (AI)". Stylist
+  tab (5th tab; Studio's icon is now "layers"), AI Today's picks, likes/dislikes with notes, My style +
+  photo switch + forget in Settings. 101 tests; checked in headless Edge (likes/notes swap in place,
+  phone/desktop, light/dark) on a preview with seeded suggestions and a dummy key. Migration 0008 ran live
+  after backup `wardrobe-20261025-164218`. **Open:** no API key yet (live shows the setup page); after
+  the user adds one, try a real request and check the answers.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -279,11 +286,34 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   handle resize, Back, save → redirect + draft cleared); the script is PC-only, not in the repo.
 - Nav: see "Tabs" in the status log (Studio is a tab everywhere since then).
 
+## Stylist (AI)
+- Provider: Google Gemini API, free tier (user's choice 2026-10-25, after hearing that a Pi can't run a
+  useful model and that Claude Pro doesn't include API use). `app/services/ai.py` is the only module
+  that calls it: httpx POST to `v1beta/models/{GEMINI_MODEL}:generateContent` with header
+  `x-goog-api-key`, JSON output via `responseMimeType` + `responseSchema` (uppercase types). Key
+  `GEMINI_API_KEY` in `.env` (chmod 600, git-ignored, not in backups); model default
+  `gemini-3.8-flash` (config.DEFAULT_GEMINI_MODEL; `gemini-3.5-flash-lite` is the lighter option).
+  Errors → `AIError` with a user message (429 = free limit; RPD resets at midnight Pacific).
+- `app/services/stylist.py`: prompt = SYSTEM rules + task + weather line + "My style" + memory (last 30
+  liked and 30 disliked suggestions with notes, 20 latest *manual* outfits) + closet lines
+  (`#id name | category / sub | colour | fabric | brand | seasons | tags | notes`) + cutout thumbs of
+  item photos (≤60 items; `stylist_photos` pref). Never sent: name, location/coordinates, fit
+  pictures, photos with background. Answers are validated: unknown/duplicate ids dropped, empty outfits
+  dropped. Table `suggestion` (migration 0008) is the memory: source stylist|daily, day, replaced,
+  request, weather, title, reason, item_ids, verdict ''|like|dislike, note, outfit_id (SET NULL).
+- Home: without a key the picks are random and inline as before; with a key `/picks` is loaded after
+  the page and calls `stylist.daily` (one per day under a lock; **Ask again** = `POST /picks/again`
+  marks the old one replaced; on failure the current one stays, or random picks with the reason).
+- Routes `app/routes/stylist.py`: `/stylist` (GET/POST, htmx adds cards; errors swap into
+  `#stylist-error` out of band), `POST /suggestions/{id}/verdict` (where=stylist|picks; clicking the
+  chosen button again clears it), `POST /suggestions/{id}/save` (auto layout, outfit source "ai",
+  which is *not* fed back as the user's own taste), `/studio?suggestion=id`, `POST /settings/stylist`,
+  `POST /stylist/forget`. `outfits.auto_board` lays items out in two columns.
+- Tests use a fake Gemini (MockTransport on `ai._client`); conftest blanks GEMINI_API_KEY so no test
+  can reach the real API even if `.env` has a key.
+
 ## Extension points (not built)
-- **AI picks:** replace the body of `featured.pick` (see above); route and templates already show `Picks.reason`.
 - **Color sorting:** `item_color` (rank, hex, share, Lab, hue) is filled on every upload.
-- **AI:** `app/services/ai.py` is the only place for Claude API calls (httpx + Messages API; key
-  `ANTHROPIC_API_KEY` in `.env`, chmod 600, git-ignored). The stubs raise NotImplementedError.
 
 ## Stage 0 audit (2026-10-24, read-only)
 - **Python:** 3.9.2 (`/usr/bin/python3`), armhf userland on an aarch64 kernel.

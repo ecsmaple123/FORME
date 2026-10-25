@@ -20,7 +20,8 @@
            ("/", "Home", "home", ()),
            ("/closet", "Closet", "hanger", ("/closet", "/items")),
            ("/outfits", "Outfits", "shirt", ("/outfits",)),
-           ("/studio", "Studio", "sparkle", ("/studio",))] %}
+           ("/studio", "Studio", "layers", ("/studio",)),
+           ("/stylist", "Stylist", "sparkle", ("/stylist",))] %}
       {% set on = path == href or (prefixes and path.startswith(prefixes)) %}
       <a href="{{ href }}" class="tab{{ ' on' if on }}"{% if on %} aria-current="page"{% endif %}>{{ icon(ic) }}<span>{{ label }}</span></a>
       {% endfor %}

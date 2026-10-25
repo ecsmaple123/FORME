@@ -55,8 +55,14 @@ def outfit_detail(request: Request, outfit_id: int, session: Session = Depends(g
 
 
 @router.get("/studio", response_class=HTMLResponse)
-def studio(request: Request, outfit: Optional[int] = None, session: Session = Depends(get_session)):
-    """The board starts empty (or with the browser's unsaved draft), or with an outfit to edit."""
+def studio(request: Request, outfit: Optional[int] = None, suggestion: Optional[int] = None,
+           session: Session = Depends(get_session)):
+    """The board starts empty (or with the browser's unsaved draft), with an outfit to edit, or
+    with a stylist suggestion laid out (saved as a new outfit)."""
+    if suggestion:
+        from .stylist import suggestion_or_404, view
+        v = view(session, suggestion_or_404(session, suggestion))
+        return _studio(request, session, board=v.board, name=v.s.title, notes=v.s.reason)
     return _studio(request, session, outfit=_outfit_or_404(session, outfit) if outfit else None)
 
 

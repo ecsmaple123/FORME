@@ -160,3 +160,33 @@ class OutfitItem(SQLModel, table=True):
 
     outfit: Optional[Outfit] = Relationship(back_populates="links")
     item: Optional[Item] = Relationship()
+
+
+VERDICTS = ("like", "dislike")
+
+
+class Suggestion(SQLModel, table=True):
+    """An outfit the AI stylist proposed, and what the user thought of it (its memory).
+
+    source: "daily" (Today's picks on the home page, one per day) or "stylist" (asked for on the
+    Stylist page). item_ids is a comma list; items deleted since are skipped when it's shown.
+    """
+    __tablename__ = "suggestion"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+    source: str = Field(default="stylist", max_length=10)
+    day: str = Field(default="", max_length=10, index=True)  # YYYY-MM-DD for daily picks
+    replaced: bool = False  # a daily pick the user asked to redo
+    request: str = Field(default="", max_length=300)  # the occasion the user typed
+    weather: str = Field(default="", max_length=200)
+    title: str = Field(default="", max_length=120)
+    reason: str = Field(default="", max_length=600)
+    item_ids: str = Field(default="", max_length=400)
+    verdict: str = Field(default="", max_length=10)  # "", or one of VERDICTS
+    note: str = Field(default="", max_length=300)  # why, in the user's words
+    outfit_id: Optional[int] = Field(default=None, foreign_key="outfit.id", ondelete="SET NULL")
+
+    @property
+    def ids(self) -> List[int]:
+        return [int(x) for x in self.item_ids.split(",") if x.strip().isdigit()]
+

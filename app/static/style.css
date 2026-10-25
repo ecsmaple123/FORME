@@ -372,6 +372,41 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
   .picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* ---------- the AI stylist ---------- */
+.error:empty { display: none; }
+.error.small { padding: .4rem .65rem; margin: .45rem 0 0; }
+.ai-tag { display: inline-flex; align-items: center; gap: .25rem; color: var(--accent); font-weight: 500; }
+.pick-actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.check-hint { margin: .2rem 0 0 1.6rem; }
+main section[id], main [id].panel { scroll-margin-top: 5rem; }
+.pick-links { margin-top: .75rem; font-size: .9rem; }
+.pick-skeleton { background: var(--surface-2); animation: pulse 1.4s ease-in-out infinite; }
+.verdict { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.verdict-btn { padding: .35rem .55rem; }
+.verdict-btn .ic { width: 1.2rem; height: 1.2rem; }
+.verdict-btn.chosen { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.verdict-note { display: flex; gap: .4rem; flex: 1 1 100%; }
+.verdict-note input { flex: 1; min-width: 0; padding: .35rem .6rem; }
+.suggestion-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 1rem; }
+.suggestion:hover { transform: none; }
+.suggestion .card-body > * + * { margin-top: .5rem; }
+.suggestion a { display: inline; text-decoration: underline; }
+.suggestion a.button { display: inline-flex; text-decoration: none; }
+.suggestion .card-title { white-space: normal; }
+.sug-reason { margin: 0; }
+.sug-items, .suggestion .card-body p { margin-bottom: 0; }
+.sug-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.suggestion.fresh { animation: rise .35s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+.board-hint.shown { display: flex; }
+.stylist-ask .ask-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.ask-busy { display: none; }
+form.htmx-request .ask-busy { display: inline; }
+form.htmx-request .ask-label { display: none; }
+.stylist-setup ol { margin: 0; padding-left: 1.25rem; }
+.stylist-setup li + li { margin-top: .4rem; }
+@media (prefers-reduced-motion: reduce) { .pick-skeleton, .suggestion.fresh { animation: none; } }
+
 /* ---------- outfits and the studio ---------- */
 .board { position: relative; aspect-ratio: 3 / 4; background: var(--tile); overflow: hidden; }
 .board img { position: absolute; height: auto; user-select: none; }
@@ -442,4 +477,8 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
   main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
   .studio-tools { gap: .3rem; }
   .studio-tools button { padding-inline: .65rem; }
+}
+@media (max-width: 520px) {
+  .picks-head { flex-direction: column; align-items: stretch; }
+  .picks-head .pick-actions { justify-content: flex-start; }
 }

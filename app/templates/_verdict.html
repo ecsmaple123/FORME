@@ -1,0 +1,26 @@
+{% from "_icons.html" import icon %}
+{# Like / dislike buttons for a stylist suggestion `s`. `where`: "stylist" (answers with the card)
+   or "picks" (answers with the home page's picks); `target`: what htmx swaps. A second click on the
+   chosen button clears it. After a dislike the user can say why (sent to the stylist next time). #}
+<div class="verdict">
+  <form method="post" action="/suggestions/{{ s.id }}/verdict" hx-post="/suggestions/{{ s.id }}/verdict"
+        hx-target="{{ target }}" hx-swap="outerHTML" class="inline-mini">
+    <input type="hidden" name="where" value="{{ where }}">
+    <button type="submit" name="verdict" value="{{ '' if s.verdict == 'like' else 'like' }}"
+            class="ghost verdict-btn{{ ' chosen' if s.verdict == 'like' }}" aria-pressed="{{ 'true' if s.verdict == 'like' else 'false' }}"
+            title="I like this">{{ icon("like", label="Like") }}</button>
+    <button type="submit" name="verdict" value="{{ '' if s.verdict == 'dislike' else 'dislike' }}"
+            class="ghost verdict-btn{{ ' chosen' if s.verdict == 'dislike' }}" aria-pressed="{{ 'true' if s.verdict == 'dislike' else 'false' }}"
+            title="Not for me">{{ icon("dislike", label="Dislike") }}</button>
+  </form>
+  {% if s.verdict %}
+  <form method="post" action="/suggestions/{{ s.id }}/verdict" hx-post="/suggestions/{{ s.id }}/verdict"
+        hx-target="{{ target }}" hx-swap="outerHTML" class="verdict-note">
+    <input type="hidden" name="where" value="{{ where }}">
+    <input type="hidden" name="verdict" value="{{ s.verdict }}">
+    <input type="text" name="note" value="{{ s.note }}" maxlength="300" aria-label="Why? (optional)"
+           placeholder="{{ 'What did you like? (optional)' if s.verdict == 'like' else 'What didn’t work? (optional)' }}">
+    <button type="submit" class="ghost">{{ "Update" if s.note else "Tell the stylist" }}</button>
+  </form>
+  {% endif %}
+</div>

@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"  # free tier; GEMINI_MODEL in .env picks another
 
 
 def _read_env_file(path: Path) -> dict:
@@ -28,7 +29,8 @@ class Settings:
     backup_dir: Path
     backup_keep: int
     max_upload_mb: int
-    anthropic_api_key: str
+    gemini_api_key: str
+    gemini_model: str
 
     @property
     def db_path(self) -> Path:
@@ -68,5 +70,6 @@ def get_settings() -> Settings:
         backup_dir=Path(env.get("WARDROBE_BACKUPS", PROJECT_DIR / "backups")),
         backup_keep=int(env.get("WARDROBE_BACKUP_KEEP", "7")),
         max_upload_mb=int(env.get("WARDROBE_MAX_UPLOAD_MB", "20")),
-        anthropic_api_key=env.get("ANTHROPIC_API_KEY", ""),
+        gemini_api_key=env.get("GEMINI_API_KEY", ""),
+        gemini_model=env.get("GEMINI_MODEL", "") or DEFAULT_GEMINI_MODEL,
     )

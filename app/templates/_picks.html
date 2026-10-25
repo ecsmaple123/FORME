@@ -1,12 +1,23 @@
 {% from "_icons.html" import icon %}
+{# Today's picks. With `sug` they're the stylist's outfit of the day (like / dislike / ask again);
+   without it they're random items (shuffle). #}
 <div id="picks">
-  <div class="section-head">
+  <div class="section-head picks-head">
     <div>
-      <h2>Today's picks</h2>
-      <p class="muted small">{{ picks.reason }}</p>
+      <h2>{% if sug %}{{ sug.s.title }}{% else %}Today's picks{% endif %}</h2>
+      <p class="muted small">{% if sug %}<span class="ai-tag">{{ icon("sparkle") }} Stylist</span> {% endif %}{{ picks.reason }}</p>
+      {% if error and sug %}<p class="error small" role="alert">{{ error }}</p>{% endif %}
     </div>
+    {% if sug %}
+    <div class="pick-actions">
+      {% with s = sug.s, where = "picks", target = "#picks" %}{% include "_verdict.html" %}{% endwith %}
+      <button class="ghost" type="button" hx-post="/picks/again" hx-target="#picks" hx-swap="outerHTML"
+              hx-disabled-elt="this" title="Ask the stylist for a different outfit">{{ icon("shuffle") }} Ask again</button>
+    </div>
+    {% else %}
     <button class="ghost" type="button" hx-get="/picks?shuffle=1" hx-target="#picks" hx-swap="outerHTML"
             title="Show different picks">{{ icon("shuffle") }} Shuffle</button>
+    {% endif %}
   </div>
   <ul class="picks">
     {% for item in picks.items %}
@@ -19,4 +30,7 @@
     </li>
     {% endfor %}
   </ul>
+  {% if sug %}
+  <p class="pick-links"><a href="/studio?suggestion={{ sug.s.id }}">Open in Studio</a> · <a href="/stylist">Ask the stylist for something else</a></p>
+  {% endif %}
 </div>

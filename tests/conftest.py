@@ -14,6 +14,7 @@ def settings(tmp_path, monkeypatch):
     """A fresh, migrated database and image folder per test."""
     monkeypatch.setenv("WARDROBE_DATA", str(tmp_path / "data"))
     monkeypatch.setenv("WARDROBE_BACKUPS", str(tmp_path / "backups"))
+    monkeypatch.setenv("GEMINI_API_KEY", "")  # never the real key from .env: no test calls Gemini
     from app.config import get_settings
     from app.db import migrate, reset_engine
 

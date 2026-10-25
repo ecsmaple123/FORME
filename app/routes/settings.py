@@ -3,24 +3,27 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import Session
 
 from ..db import get_session
-from ..services import library, prefs, weather
+from ..services import ai, library, prefs, stylist, weather
 from ..templating import templates
 
 router = APIRouter()
 
 
 def render_settings(request: Request, session: Session, *, find: str = "", places=None,
-                    error: str = "", saved: bool = False, status_code: int = 200):
+                    error: str = "", saved: bool = False, forgot: bool = False,
+                    status_code: int = 200):
     return templates.TemplateResponse(request, "settings.html", {
         "p": prefs.get(), "THEMES": prefs.THEMES, "UNITS": prefs.UNITS, "find": find,
         "places": places, "error": error, "saved": saved,
         "categories": library.list_categories(session),
         "counts": library.category_counts(session),
+        "stylist_ready": stylist.available(), "model": ai.model(),
+        "taste": stylist.counts(session), "forgot": forgot,
     }, status_code=status_code)
 
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request, find: str = "", saved: str = "",
+def settings_page(request: Request, find: str = "", saved: str = "", forgot: str = "",
                   session: Session = Depends(get_session)):
     """`find` searches for a weather location; the results are listed on the page to pick from."""
     if find.strip():
@@ -28,7 +31,7 @@ def settings_page(request: Request, find: str = "", saved: str = "",
             return render_settings(request, session, find=find, places=weather.search_places(find))
         except weather.WeatherError as exc:
             return render_settings(request, session, find=find, error=str(exc), status_code=422)
-    return render_settings(request, session, saved=bool(saved))
+    return render_settings(request, session, saved=bool(saved), forgot=bool(forgot))
 
 
 @router.post("/settings")

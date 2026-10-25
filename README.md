@@ -43,6 +43,15 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
 - **Outfits** (`/outfits`): every saved outfit as one card showing its items as arranged in the Studio.
   An outfit's page lists its items, with *Edit in Studio* (save changes or *Save as new*) and *Delete…*.
   Deleting an item takes it off any outfit.
+- **Stylist** (AI, Google Gemini free tier; optional): on the Stylist tab say what you're dressing for
+  and get 3 outfits from your closet for today's weather. 👍 / 👎 each one (and say why), **Save as
+  outfit** or **Edit in Studio**. With the stylist set up, *Today's picks* on Home is its outfit of the
+  day (made once a day; **Ask again** for another). It remembers your likes, dislikes and notes, the
+  outfits you saved yourself, and *My style* in Settings; Settings can also make it forget.
+  Setup: get a key at https://aistudio.google.com/apikey, put `GEMINI_API_KEY=…` in `.env`, then
+  `./wardrobe.sh restart`. Gemini gets your clothes' details, the weather, your requests and feedback
+  and (switchable) the cutout photos; never your name, location or fit pictures. On the free tier
+  Google may use this to improve its products.
 - **Home:** a greeting, today's weather (once a location is set) with a what-to-wear hint, four
   featured picks (random for now, the same all day; **Shuffle** for new ones) and recently added items.
 - **Settings** (gear icon): categories, your name for the greeting, **Appearance** (System / Light / Dark),

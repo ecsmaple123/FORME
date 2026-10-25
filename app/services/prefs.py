@@ -1,4 +1,5 @@
-"""User preferences (the Settings page): name, theme, weather location and units.
+"""User preferences (the Settings page): name, theme, weather location and units, and the
+stylist's "My style" text and photo switch.
 
 Stored as strings in the `setting` table. Every page needs them (theme, greeting), so they're
 cached in memory and the cache is dropped when they're saved. The cache is tied to the engine,
@@ -27,6 +28,12 @@ class Prefs:
     latitude: str = ""
     longitude: str = ""
     timezone: str = ""    # IANA name of the place, used for the greeting and the date
+    style: str = ""       # "My style", in the user's words, for the AI stylist
+    stylist_photos: str = "on"  # "on": the stylist also sees the cutout photos of items
+
+    @property
+    def send_photos(self) -> bool:
+        return self.stylist_photos != "off"
 
     @property
     def has_place(self) -> bool:
@@ -69,6 +76,11 @@ def _clean(values: Dict[str, str]) -> Dict[str, str]:
         if values["units"] not in UNITS:
             raise PrefsError("Pick °C or °F.")
         out["units"] = values["units"]
+    if "style" in values:
+        lines = [" ".join(line.split()) for line in values["style"].splitlines()]
+        out["style"] = "\n".join(line for line in lines if line)[:1000]
+    if "stylist_photos" in values:
+        out["stylist_photos"] = "on" if values["stylist_photos"] == "on" else "off"
     if "place" in values:
         if not values["place"]:  # clearing the location
             out.update(place="", latitude="", longitude="", timezone="")

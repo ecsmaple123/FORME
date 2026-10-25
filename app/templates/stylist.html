@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Stylist · FORME{% endblock %}
+{% block content %}
+<h1 class="page-title">Stylist</h1>
+
+{% if not available %}
+<section class="panel stack stylist-setup">
+  <h2>{{ icon("sparkle") }} Set up your stylist</h2>
+  <p>The stylist uses Google's Gemini (free tier). It needs an API key:</p>
+  <ol>
+    <li>Get a free key at <a href="https://aistudio.google.com/apikey" rel="noreferrer noopener" target="_blank">aistudio.google.com/apikey</a> (any Google account).</li>
+    <li>Add it to the app's <code>.env</code> file on the Pi as <code>GEMINI_API_KEY=…</code> and restart the app (<code>./wardrobe.sh restart</code>).</li>
+  </ol>
+  <p class="muted small">Until then, Today's picks on the home page stay random.</p>
+</section>
+{% else %}
+<form class="panel stack stylist-ask" method="post" action="/stylist"
+      hx-post="/stylist" hx-target="#suggestions" hx-swap="afterbegin" hx-disabled-elt="find button"
+      hx-on::before-request="document.getElementById('stylist-error').textContent=''"
+      hx-on::after-request="if (event.detail.successful) { this.reset(); var e = document.getElementById('sug-empty'); if (e) e.remove(); }">
+  <label>What are you dressing for?
+    <input type="text" name="occasion" value="{{ asked }}" maxlength="300"
+           placeholder="Dinner with friends, smart casual · a walk in the park · job interview">
+  </label>
+  <div class="ask-row">
+    {% if has_place %}<label class="check"><input type="checkbox" name="use_weather" value="1" checked> Dress for today's weather</label>
+    {% else %}<span class="muted small">Set a <a href="/settings#location">weather location</a> to dress for the weather.</span>{% endif %}
+    <button class="primary" type="submit">{{ icon("sparkle") }} <span class="ask-label">Suggest outfits</span><span class="ask-busy">Thinking…</span></button>
+  </div>
+  <p class="muted small">It learns from your 👍 and 👎 ({{ counts.like }} liked, {{ counts.dislike }} disliked so far), the outfits you save, and <a href="/settings#stylist">your style</a>.</p>
+</form>
+{% endif %}
+<div id="stylist-error" role="alert" class="{{ 'error' if error }}">{{ error }}</div>
+
+<ul class="grid suggestion-grid" id="suggestions">
+  {% for sug in suggestions %}{% include "_suggestion.html" %}{% endfor %}
+</ul>
+{% if available and not suggestions %}<p class="empty" id="sug-empty">Ask for an occasion above, or just press Suggest outfits.</p>{% endif %}
+{% endblock %}

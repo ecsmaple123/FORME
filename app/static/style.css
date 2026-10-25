@@ -216,7 +216,6 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
 /* cutouts (background removed): transparent WebP cropped to the item, so give it some air */
 .thumb img[src^="/media/cutout/"] { padding: 7%; }
 .detail-img img[src^="/media/cutout/"] { padding: 6%; }
-.cutout-bar { margin-top: -.25rem; }
 .badge.pending { background: var(--accent-soft); }
 
 /* import preview */

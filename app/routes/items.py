@@ -109,7 +109,7 @@ def delete(item_id: int, session: Session = Depends(get_session)):
 
 @router.post("/items/{item_id}/photos")
 def add_photos(request: Request, item_id: int, photo: List[UploadFile] = File([]),
-               image_url: str = Form(""), kind: str = Form("real"),
+               image_url: str = Form(""), kind: str = Form("product"),
                session: Session = Depends(get_session)):
     item = _item_or_404(session, item_id)
     files = [f for f in photo if f.filename]
@@ -136,22 +136,6 @@ def add_photos(request: Request, item_id: int, photo: List[UploadFile] = File([]
 def make_cover(item_id: int, photo_id: int, session: Session = Depends(get_session)):
     item = _item_or_404(session, item_id)
     library.set_cover(session, item, _photo_or_404(item, photo_id))
-    return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
-
-
-@router.post("/items/{item_id}/photos/{photo_id}/kind")
-def change_kind(item_id: int, photo_id: int, kind: str = Form(...),
-                session: Session = Depends(get_session)):
-    item = _item_or_404(session, item_id)
-    library.set_kind(session, _photo_or_404(item, photo_id), kind)
-    return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
-
-
-@router.post("/items/{item_id}/photos/{photo_id}/cutout")
-def cutout_switch(item_id: int, photo_id: int, show: str = Form("1"),
-                  session: Session = Depends(get_session)):
-    item = _item_or_404(session, item_id)
-    library.set_show_cutout(session, item, _photo_or_404(item, photo_id), show == "1")
     return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
 
 

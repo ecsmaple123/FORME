@@ -20,17 +20,16 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   (og:image, then JSON-LD Product, then the largest `<img>`), plus the name and brand, and shows a preview.
   If the store blocks it, use **Paste an image URL** (right-click the picture → *Copy image address*)
   or **Upload a photo**. Images are always downloaded and stored on the Pi.
-- **Several photos per item** (up to 12), each with a type: *Product photo, Real photo, Detail, Other*.
-  The first one is the **cover** (grid thumbnail, and the item's colors come from it). On an item's page:
-  click a thumbnail to view it, **+ Add photos** (upload or image URL), change its type, **Make cover**,
-  or **Delete photo…** (with a confirmation; the last photo can't be deleted). Up to 6 photos can be added at once.
-- **Background removal:** every photo gets a cutout: the item cut out on a transparent background,
-  cropped to the item. That's what the grid, the item page and the photo strip show. It happens in the
-  background about 15 s after you add a photo; the item page shows *Removing background…* and updates
-  itself. **Show with background** switches one photo back to the original (and **Remove background**
-  switches it again). If no clear item is found (e.g. a fabric close-up), the photo is shown as uploaded
-  and **Try again** is offered. The original file is never changed. On a photo of someone *wearing* the
-  item, the whole person is kept. Item colors are taken from the cutout, so the backdrop doesn't count.
+- **Several photos per item** (up to 12), each either an *Item photo* or a *Fit picture* (chosen when
+  you add it). The first one is the **cover** (grid thumbnail, and the item's colors come from it). On an
+  item's page: click a thumbnail to view it, **+ Add photos** (upload or image URL), **Make cover**, or
+  **Delete photo…** (with a confirmation; the last photo can't be deleted). Up to 6 photos can be added at once.
+- **Background removal:** every item photo's background is removed automatically: the item is cut out on
+  a transparent background and cropped to it. It happens about 15 s after you add the photo; the item
+  page shows *Removing background…* and updates itself. Only the cutout is kept; the photo with its
+  background is deleted. **Fit pictures keep their background** and are never cut out. If no clear item is
+  found (e.g. a fabric close-up), the photo stays as uploaded and **Try again** is offered. Item colors
+  are taken from the cutout, so the backdrop doesn't count.
 - **Upload photos:** JPEG up to 40 MP; PNG/GIF up to 8.5 MP; WebP up to 6 MP; 20 MB max file size.
   For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
 - The primary color is pre-filled from the photo (white backgrounds are ignored). Click a swatch or
@@ -56,11 +55,11 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
 | `./wardrobe.sh status` | state, memory, item count, cutouts per state, last backup, data size |
 | `./wardrobe.sh logs` (add `-f` to follow) | last 200 log lines (`journalctl --user -u wardrobe`) |
 | `./wardrobe.sh cutout-logs` (add `-f`) | the background-removal worker's log |
-| `./wardrobe.sh cutouts` / `cutouts retry` / `cutouts redo` | cutout counts / redo failed ones / redo every photo |
+| `./wardrobe.sh cutouts` / `cutouts retry` / `cutouts redo` | cutout counts / redo failed ones / also redo those whose original is still there |
 | `./wardrobe.sh backup` | dated archive in `backups/`, keeps the newest 7 |
 | `./wardrobe.sh restore FILE` | restore an archive (see below) |
 | `./wardrobe.sh update` | backup → `git pull` (if there's a remote) → pip install → migrate → restart |
-| `./wardrobe.sh rebuild-images` | regenerate display images and thumbnails from the originals |
+| `./wardrobe.sh rebuild-images` | regenerate display images and thumbnails from the kept originals |
 | `./wardrobe.sh test` | run the test suite |
 | `./wardrobe.sh remove` | stop + disable + delete the service and backup-timer units (data and code stay) |
 
@@ -70,8 +69,9 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
 A backup runs **every day at about 04:45** (`wardrobe-backup.timer`, 30 min after matrix-hub's).
 `./wardrobe.sh status` shows the next run. `./wardrobe.sh backup` makes one now. Each run writes `backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz` plus a `.sha256` file. Each archive holds:
 - `wardrobe.db`: a consistent SQLite snapshot (safe while the app runs)
-- `images/orig/`: the original photos (display images and thumbnails are rebuilt on restore, and the
-  worker redoes the cutouts in the background, ~11 s per photo)
+- `images/cutout/`: the cutouts (for item photos this is the only copy: the original isn't kept)
+- `images/orig/`: the photos kept as uploaded (fit pictures, and any photo whose background isn't
+  removed yet); display images and thumbnails are rebuilt from them on restore
 - `manifest.json`: item count, schema revision and git commit
 
 The newest 7 are kept. To copy them to the PC, run this in Git Bash:

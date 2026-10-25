@@ -5,8 +5,9 @@ few MB of RAM) whether any photo is waiting. If so it runs `python -m app cutout
 process that loads numpy, OpenCV and the model (~285 MB), cuts out every waiting photo one at a
 time, and exits so the memory is given back.
 
-A cutout is made from the photo's display image (already rotated, at most 1500 px). Photos deleted
-or changed while being processed are skipped and their new files removed.
+A cutout is made from the photo's display image (already rotated, at most 1500 px); after that
+the photo with its background (orig, display, thumb) is deleted. Fit pictures are never queued.
+Photos deleted or changed while being processed are skipped and their new files removed.
 """
 import logging
 import sqlite3
@@ -70,7 +71,7 @@ def process_photo(photo_id: int, segment: Callable) -> Optional[str]:
         photo = session.get(ItemPhoto, photo_id)
         if photo is None or photo.cutout_status != "pending":
             return None
-        stem = photo.image_file
+        stem, ext = photo.image_file, photo.image_ext
 
     new_name, status = None, "failed"
     try:
@@ -96,6 +97,8 @@ def process_photo(photo_id: int, segment: Callable) -> Optional[str]:
         session.commit()
     if old and old != new_name:
         images.delete_files(images_dir, "", "", cutout=old)
+    if status == "done":
+        images.delete_files(images_dir, stem, ext)  # only the cutout is kept
     return status
 
 

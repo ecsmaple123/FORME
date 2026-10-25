@@ -56,7 +56,7 @@ def add_page(request: Request):
 
 @router.post("/add/photo", response_class=HTMLResponse)
 def add_photo(request: Request, photo: List[UploadFile] = File(...),
-              photo_kind: str = Form("real"), source_url: str = Form(""),
+              photo_kind: str = Form("product"), source_url: str = Form(""),
               name: str = Form(""), brand: str = Form(""),
               session: Session = Depends(get_session)):
     files = [f for f in photo if f.filename]
@@ -68,7 +68,7 @@ def add_photo(request: Request, photo: List[UploadFile] = File(...),
     if not staged:
         return _add_page(request, error=" ".join(errors) or "No file was uploaded.",
                          url=source_url, name=name, brand=brand, status_code=422)
-    return _new_item_form(request, session, staged, library.clean_kind(photo_kind, "real"),
+    return _new_item_form(request, session, staged, library.clean_kind(photo_kind),
                           name=name, brand=brand, source_url=source_url, warnings=errors)
 
 

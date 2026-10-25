@@ -6,50 +6,32 @@
 <div class="detail">
   <div class="gallery">
     {% if shown %}
-    <a href="{{ media_url(shown, 'orig') }}" class="detail-img" title="Open the original">
+    <a href="{{ media_url(shown, 'orig') }}" class="detail-img" title="Open full size">
       <img src="{{ media_url(shown, 'display') }}" alt="{{ item.name }}">
     </a>
+    {% set several = item.photos|length > 1 %}
+    {% if several or shown.kind == "fit" or shown.cutout_status in ("pending", "none", "failed") %}
     <div class="photo-bar">
-      <span class="badge">{{ shown.kind_label }}</span>
-      {% if shown.position == 0 %}<span class="badge">Cover</span>{% endif %}
-      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/kind" class="inline-mini">
-        <select name="kind" aria-label="Photo type" onchange="this.form.submit()">
-          {% for key, label in PHOTO_KINDS.items() %}
-          <option value="{{ key }}" {% if key == shown.kind %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-        <noscript><button type="submit">Set type</button></noscript>
-      </form>
-      {% if shown.position != 0 %}
-      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cover" class="inline-mini">
-        <button type="submit">Make cover</button>
-      </form>
-      {% endif %}
-      {% if item.photos|length > 1 %}
-      <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
-      {% endif %}
-    </div>
-    <div class="photo-bar cutout-bar">
+      {% if shown.kind == "fit" %}<span class="badge">{{ shown.kind_label }}</span>{% endif %}
+      {% if several and shown.position == 0 %}<span class="badge">Cover</span>{% endif %}
       {% if shown.cutout_status == "pending" %}
         {% with photo=shown %}{% include "_cutout_pending.html" %}{% endwith %}
-      {% elif shown.cutout_status == "done" %}
-      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cutout" class="inline-mini">
-        {% if shown.show_cutout %}
-        <input type="hidden" name="show" value="0">
-        <button type="submit" title="Show this photo as it was uploaded">Show with background</button>
-        {% else %}
-        <input type="hidden" name="show" value="1">
-        <button type="submit">Remove background</button>
-        {% endif %}
-      </form>
-      {% if shown.show_cutout %}<span class="muted small">Background removed automatically.</span>{% endif %}
-      {% else %}
+      {% elif shown.cutout_status in ("none", "failed") %}
       <span class="muted small">{{ "Couldn't find a clear item to cut out." if shown.cutout_status == "none" else "Background removal failed." }}</span>
       <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cutout/retry" class="inline-mini">
         <button type="submit">Try again</button>
       </form>
       {% endif %}
+      {% if several and shown.position != 0 %}
+      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cover" class="inline-mini">
+        <button type="submit">Make cover</button>
+      </form>
+      {% endif %}
+      {% if several %}
+      <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
+      {% endif %}
     </div>
+    {% endif %}
     {% endif %}
 
     {% if item.photos|length > 1 %}
@@ -73,12 +55,12 @@
         <label>Type
           <select name="kind">
             {% for key, label in PHOTO_KINDS.items() %}
-            <option value="{{ key }}" {% if key == "real" %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ key }}" {% if key == "fit" %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </label>
         <button class="primary" type="submit">Add</button>
-        <p class="muted small">Up to {{ MAX_PHOTOS }} photos per item ({{ item.photos|length }} now).</p>
+        <p class="muted small">Item photos get their background removed; fit pictures keep it. Up to {{ MAX_PHOTOS }} photos per item ({{ item.photos|length }} now).</p>
       </form>
     </details>
     {% endif %}

@@ -1,4 +1,4 @@
-"""Background removal: the worker's bookkeeping, display switching, cleanup and the 0003 migration.
+"""Background removal: the worker's bookkeeping, fit pictures, cleanup and the 0003/0006 migrations.
 
 The model itself needs OpenCV + system libraries; a Pillow-only fake segmenter stands in for it
 (the real one is exercised by test_real_model_cuts_out_garment when available).
@@ -25,11 +25,11 @@ def fake_segment(rgb: Image.Image) -> Image.Image:
     return rgb.convert("L").point(lambda v: 255 if v < 240 else 0)
 
 
-def _create(client, colors=(NAVY,)):
+def _create(client, colors=(NAVY,), kind="product"):
     r = client.post("/add/photo", files=[("photo", ("p.jpg", make_image(garment=c), "image/jpeg"))
                                          for c in colors])
     tokens = re.findall(r'name="image_token" value="([0-9a-f]{32})"', r.text)
-    r = client.post("/items", data={"image_token": tokens, "photo_kind": ["product"] * len(tokens),
+    r = client.post("/items", data={"image_token": tokens, "photo_kind": [kind] * len(tokens),
                                     "name": "Coat", "category_id": "1"}, follow_redirects=False)
     return int(r.headers["location"].rsplit("/", 1)[1])
 
@@ -61,9 +61,14 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
         assert cut.mode == "RGBA" and cut.size[0] < 700 and cut.size[1] < 1000
         assert cut.getpixel((0, 0))[3] == 0 and cut.getpixel((cut.width // 2, cut.height // 2))[3] == 255
     assert files["thumb"].is_file()
+    # the photo with its background is not kept
+    assert not any(f.exists() for f in images.paths(settings.images_dir, photo.image_file,
+                                                     photo.image_ext).values())
 
     r = client.get(f"/items/{item_id}")
-    assert f"/media/cutout/{photo.cutout_file}.webp" in r.text and "Show with background" in r.text
+    assert f'href="/media/cutout/{photo.cutout_file}.webp"' in r.text
+    assert "/media/orig/" not in r.text and "/media/display/" not in r.text
+    assert "Show with background" not in r.text and "Remove background" not in r.text
     assert client.get(f"/media/cutout/{photo.cutout_file}.thumb.webp").status_code == 200
     grid = client.get("/closet", headers={"HX-Request": "true"})
     assert f"/media/cutout/{photo.cutout_file}.thumb.webp" in grid.text
@@ -76,17 +81,40 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
     assert r.headers.get("HX-Refresh") == "true"
 
 
-def test_switch_back_to_original(client):
-    item_id = _create(client)
-    _batch()
+def test_fit_picture_keeps_background(client, settings):
+    item_id = _create(client, kind="fit")
     (photo,), _ = _photos(item_id)
-    client.post(f"/items/{item_id}/photos/{photo.id}/cutout", data={"show": "0"})
+    assert photo.kind == "fit" and photo.cutout_status == "skip"
+    assert not worker.has_pending(settings.db_path)
+    assert _batch() == 0
     (photo,), _ = _photos(item_id)
-    assert not photo.show_cutout and photo.cutout_shown is None
+    assert photo.cutout_status == "skip" and photo.cutout_shown is None
+    assert all(f.exists() for f in images.paths(settings.images_dir, photo.image_file,
+                                                 photo.image_ext).values())
     r = client.get(f"/items/{item_id}")
-    assert f"/media/display/{photo.image_file}.jpg" in r.text and "Remove background" in r.text
-    client.post(f"/items/{item_id}/photos/{photo.id}/cutout", data={"show": "1"})
-    assert _photos(item_id)[0][0].cutout_shown
+    assert f"/media/display/{photo.image_file}.jpg" in r.text and "Fit picture" in r.text
+    assert "Removing background" not in r.text
+
+    # added to an existing item: a fit picture is skipped, an item photo is queued
+    client.post(f"/items/{item_id}/photos", files=[("photo", ("p.jpg", make_image(), "image/jpeg"))],
+                data={"kind": "product"})
+    assert [p.cutout_status for p in _photos(item_id)[0]] == ["skip", "pending"]
+
+
+def test_cleanup_drops_backgrounds_of_cut_out_photos(client, settings):
+    """Photos cut out before the worker deleted originals lose them at the next cleanup."""
+    item_id = _create(client)
+    (photo,), _ = _photos(item_id)
+    files = images.paths(settings.images_dir, photo.image_file, photo.image_ext)
+    keep = {k: f.read_bytes() for k, f in files.items()}
+    _batch()
+    for k, f in files.items():
+        f.write_bytes(keep[k])  # as if cut out by the old worker
+    from app.services.library import cleanup_staging
+    cleanup_staging()
+    assert not any(f.exists() for f in files.values())
+    (photo,), _ = _photos(item_id)
+    assert images.cutout_paths(settings.images_dir, photo.cutout_file)["display"].is_file()
 
 
 def test_no_subject_and_failure_then_retry(client):
@@ -112,11 +140,22 @@ def test_no_subject_and_failure_then_retry(client):
     assert _photos(second)[0][0].cutout_status == "done"
 
 
+def _keep_original(settings, photo):
+    """Bytes of a photo's files, to put back after the worker deleted them."""
+    return {f: f.read_bytes() for f in images.paths(settings.images_dir, photo.image_file,
+                                                     photo.image_ext).values()}
+
+
 def test_redo_replaces_old_cutout(client, settings):
     item_id = _create(client)
+    (photo,), _ = _photos(item_id)
+    kept = _keep_original(settings, photo)
     _batch()
     (photo,), _ = _photos(item_id)
     old = images.cutout_paths(settings.images_dir, photo.cutout_file)
+    assert ops.requeue_cutouts(everything=True) == 0  # the original is gone: nothing to redo from
+    for f, data in kept.items():
+        f.write_bytes(data)
     assert ops.requeue_cutouts(everything=True) == 1
     assert _batch() == 0
     (photo,), _ = _photos(item_id)
@@ -165,18 +204,48 @@ def test_unavailable_model_leaves_photos_pending(client):
     assert worker.has_pending(get_engine().url.database)
 
 
-def test_requeue_and_rebuild(client, settings):
+def test_requeue_and_rebuild(client, settings, capsys):
     item_id = _create(client)
+    (photo,), _ = _photos(item_id)
+    kept = _keep_original(settings, photo)
     _batch(lambda rgb: Image.new("L", rgb.size, 0))
     assert ops.requeue_cutouts() == 1
     _batch()
     (photo,), _ = _photos(item_id)
     assert "1 done" in ops.cutout_summary()
-    # after a restore the cutout files are gone: rebuild queues the photo again
+    # cutout files gone (an old backup) but the original back: rebuild queues the photo again
     images.delete_files(settings.images_dir, "", "", cutout=photo.cutout_file)
+    for f, data in kept.items():
+        f.write_bytes(data)
     ops.rebuild_images()
     assert _photos(item_id)[0][0].cutout_status == "pending"
-    assert ops.requeue_cutouts(everything=True) == 1
+    # with neither the original nor the cutout there is nothing to rebuild from
+    _batch()
+    (photo,), _ = _photos(item_id)
+    images.delete_files(settings.images_dir, "", "", cutout=photo.cutout_file)
+    capsys.readouterr()
+    ops.rebuild_images()
+    assert _photos(item_id)[0][0].cutout_status == "done"
+    assert "neither its original nor a cutout" in capsys.readouterr().out
+
+
+def test_backup_keeps_cutouts(client, settings, capsys):
+    """After the background is removed the cutout is the only copy, so backups must hold it."""
+    item_id = _create(client)
+    fit_id = _create(client, (RED,), kind="fit")
+    _batch()
+    (photo,), _ = _photos(item_id)
+    archive = ops.backup()
+    client.post(f"/items/{item_id}/delete")
+    client.post(f"/items/{fit_id}/delete")
+    ops.restore(str(archive))
+    (photo,), _ = _photos(item_id)
+    assert photo.cutout_status == "done"
+    assert images.cutout_paths(settings.images_dir, photo.cutout_file)["display"].is_file()
+    (fit,), _ = _photos(fit_id)
+    assert all(f.is_file() for f in images.paths(settings.images_dir, fit.image_file,
+                                                 fit.image_ext).values())
+    assert "warning" not in capsys.readouterr().out
 
 
 def test_cleanup_keeps_cutouts_in_use(client, settings):
@@ -213,9 +282,44 @@ def test_migration_0003_queues_existing_photos(tmp_path, monkeypatch):
                 "VALUES (3, 0, 'product', 'abc', 'jpg', '2026-10-24')")
     con.commit()
     command.upgrade(cfg, "head")
-    assert con.execute("SELECT cutout_status, show_cutout FROM item_photo").fetchall() == [("pending", 1)]
+    assert con.execute("SELECT cutout_status FROM item_photo").fetchall() == [("pending",)]
     command.downgrade(cfg, "0002")
     assert "cutout_status" not in [r[1] for r in con.execute("PRAGMA table_info(item_photo)")]
+    con.close()
+    reset_engine()
+    get_settings.cache_clear()
+
+
+def test_migration_0006_fit_pictures(tmp_path, monkeypatch):
+    monkeypatch.setenv("WARDROBE_DATA", str(tmp_path / "data"))
+    from alembic import command
+    from alembic.config import Config
+
+    from app.config import PROJECT_DIR, get_settings
+    from app.db import reset_engine
+
+    get_settings.cache_clear()
+    reset_engine()
+    get_settings().ensure_dirs()
+    cfg = Config(str(PROJECT_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(PROJECT_DIR / "migrations"))
+    command.upgrade(cfg, "0005")
+    con = sqlite3.connect(str(get_settings().db_path))
+    con.execute("INSERT INTO item (id, name, category_id, created_at, updated_at) "
+                "VALUES (3, 'Jumper', 1, '2026-10-24', '2026-10-24')")
+    for pos, kind, status in ((0, "product", "done"), (1, "real", "done"), (2, "detail", "none"),
+                              (3, "other", "pending")):
+        con.execute("INSERT INTO item_photo (item_id, position, kind, image_file, image_ext, "
+                    "cutout_status, cutout_file, show_cutout, created_at) "
+                    "VALUES (3, ?, ?, 'abc', 'jpg', ?, 'cut', 0, '2026-10-24')", (pos, kind, status))
+    con.commit()
+    command.upgrade(cfg, "head")
+    rows = con.execute("SELECT kind, cutout_status, cutout_file FROM item_photo ORDER BY position")
+    assert rows.fetchall() == [("product", "done", "cut"), ("fit", "skip", None),
+                               ("product", "none", "cut"), ("product", "pending", "cut")]
+    assert "show_cutout" not in [r[1] for r in con.execute("PRAGMA table_info(item_photo)")]
+    command.downgrade(cfg, "0005")
+    assert con.execute("SELECT kind, cutout_status FROM item_photo WHERE position = 1").fetchone()         == ("real", "none")
     con.close()
     reset_engine()
     get_settings.cache_clear()

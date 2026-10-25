@@ -64,6 +64,20 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   separate checkout (`~/projects/wardrobe-next`, removed) with a preview on a copy of the real data.
   Brand stays on the item page, form and search; only the cards dropped it.
 
+- **2026-10-25: Item photos vs fit pictures; only cutouts kept** (user: "The area below the photo in an
+  item is too busy. Remove the background options. When uploading, automatically remove background ...
+  We don't need to store the image with background. For multiple photo option, the only other category
+  should be fit pictures ... if it's a fit picture, keep the background otherwise remove it automatically").
+  Removed the type dropdown and the "Show with background"/"Remove background" switch from the item page;
+  the bar under the photo now only appears with several photos (Cover badge, Make cover, Delete photo),
+  for a fit picture (badge), or while/if background removal is pending/failed. Types are now Item photo
+  and Fit picture. Migration 0006: real → fit (state skip), detail/other → product, drops `show_cutout`.
+  The worker deletes the photo with its background once the cutout exists. Backups now include
+  `images/cutout/` (otherwise a restore would lose every item photo). 82 tests. Ran live after backup
+  `backups/wardrobe-20261025-133520.tar.gz` (the last one with the 10 originals); the live photos were all
+  item photos with done cutouts, so their originals are now deleted. First backup with cutouts:
+  `wardrobe-20261025-133537`. Tested first in `~/projects/wardrobe-next` on a copy of the real data.
+
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
 - **Backups:** daily via `wardrobe-backup.timer` (04:45) → `wardrobe-backup.service` → `python -m app backup`.
@@ -101,12 +115,17 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   batch table rebuilds would otherwise cascade-delete child rows. A `PRAGMA foreign_key_check` runs after.
 
 ## Background removal (cutouts)
-- **What:** each photo gets a transparent WebP cutout cropped to the subject (`data/images/cutout/
-  <cutout_file>.webp` + `.thumb.webp`, new name on each redo). Templates show it via `media_url`
-  unless the photo's `show_cutout` is off. The original and its display/thumb files are never changed.
-  Item colors come from the cover's cutout when it's shown.
+- **What:** each item photo (kind `product`) gets a transparent WebP cutout cropped to the subject
+  (`data/images/cutout/<cutout_file>.webp` + `.thumb.webp`, new name on each redo). Once it's done the
+  worker **deletes the photo with its background** (orig/display/thumb); `cleanup_staging` (app start)
+  does the same for any done photo that still has them. `media_url` serves the cutout for every size,
+  "orig" included. Fit pictures (kind `fit`) are never cut out (state `skip`). Item colors come from
+  the cover's cutout.
 - **States** (`item_photo.cutout_status`): pending → done | none (no subject between 2% and 95% of the
-  frame) | failed (exception, logged). "Try again" / `./wardrobe.sh cutouts retry` re-queue.
+  frame) | failed (exception, logged); skip = fit picture. "Try again" / `./wardrobe.sh cutouts retry`
+  re-queue; `cutouts redo` and `rebuild-images` only re-queue photos whose original still exists.
+- **Backups include `images/cutout/`** since 0006 (it's the only copy of an item photo now). Older
+  backups have only `images/orig/`; restoring one re-queues their cutouts.
 - **Model:** U^2-Net-p (`models/u2netp.onnx`, 4.6 MB, Apache-2.0) from the rembg release, downloaded by
   `wardrobe.sh` with a pinned SHA-256; not in git. Run with OpenCV DNN at 320x320, then refined at
   full size (guided filter, contrast curve, backdrop-color cleanup, hole filling, 1-3 px trim, speck
@@ -159,7 +178,9 @@ Measured on the Pi, 2026-10-24:
 - Image downloads ask CDNs for JPEG first (cheap to decode), and the store preview image is loaded
   directly from the store in your browser for the confirmation step only. It's saved on the Pi when
   you continue.
-- Upload photo type defaults to *Real photo*; URL/bookmark imports default to *Product photo*.
+- Photo types are only *Item photo* (`product`) and *Fit picture* (`fit`), chosen when adding; there's
+  no way to change a photo's type afterwards (an item photo's background is gone by then). Uploads and
+  imports default to *Item photo*; "+ Add photos" on an item defaults to *Fit picture*.
 - No `/api/...` endpoints for rembg yet (that's for later; the design is in PLAN.md §8).
 
 ## Versions (Python 3.9.2; full list in requirements.lock)

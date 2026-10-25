@@ -23,7 +23,7 @@
       <label>Photo type
         <select name="photo_kind">
           {% for key, label in PHOTO_KINDS.items() %}
-          <option value="{{ key }}" {% if key == "real" %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ key }}" {% if key == "product" %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>
@@ -31,7 +31,7 @@
       <input type="hidden" name="name" value="{{ name }}">
       <input type="hidden" name="brand" value="{{ brand }}">
       <button class="primary" type="submit">Upload</button>
-      <p class="muted small">Up to {{ MAX_PER_REQUEST }} at once. JPEG, PNG or WebP, 20 MB each. You can change each photo's type on the next page.</p>
+      <p class="muted small">Up to {{ MAX_PER_REQUEST }} at once. JPEG, PNG or WebP, 20 MB each. You can change each photo's type on the next page. Item photos get their background removed; fit pictures keep it.</p>
     </form>
   </section>
 

@@ -33,21 +33,21 @@ def _item(item_id):
 
 def _create_with(client, colors, kinds=None):
     r = client.post("/add/photo", files=[("photo", _jpeg(c)) for c in colors],
-                    data={"photo_kind": "real"})
+                    data={"photo_kind": "fit"})
     assert r.status_code == 200, r.text
     tokens = _tokens(r.text)
     assert len(tokens) == len(colors)
     r = client.post("/items", data={
-        "image_token": tokens, "photo_kind": kinds or ["real"] * len(tokens),
+        "image_token": tokens, "photo_kind": kinds or ["fit"] * len(tokens),
         "name": "Shirt", "category_id": "1"}, follow_redirects=False)
     assert r.status_code == 303, r.text
     return int(r.headers["location"].rsplit("/", 1)[1])
 
 
 def test_create_with_several_photos_and_kinds(client):
-    item_id = _create_with(client, [NAVY, RED], kinds=["product", "real"])
+    item_id = _create_with(client, [NAVY, RED], kinds=["product", "fit"])
     item = _item(item_id)
-    assert [(p.position, p.kind) for p in item.photos] == [(0, "product"), (1, "real")]
+    assert [(p.position, p.kind) for p in item.photos] == [(0, "product"), (1, "fit")]
     assert item.cover.id == item.photos[0].id
     # colors come from the cover (navy), not the second photo
     from app.services.colors import nearest_color_name
@@ -56,14 +56,14 @@ def test_create_with_several_photos_and_kinds(client):
     assert 'class="count-badge"' in r.text
 
 
-def test_add_photo_set_cover_change_kind_delete(client, settings):
+def test_add_photo_set_cover_delete(client, settings):
     item_id = _create_with(client, [NAVY])
     r = client.post(f"/items/{item_id}/photos", files=[("photo", _jpeg(RED))],
-                    data={"kind": "detail"}, follow_redirects=False)
+                    data={"kind": "fit"}, follow_redirects=False)
     assert r.status_code == 303
     item = _item(item_id)
     first, second = item.photos
-    assert second.kind == "detail" and second.position == 1
+    assert second.kind == "fit" and second.position == 1
 
     r = client.get(f"/items/{item_id}?photo={second.id}")
     assert "Make cover" in r.text and "Delete photo" in r.text
@@ -73,10 +73,6 @@ def test_add_photo_set_cover_change_kind_delete(client, settings):
     assert item.cover.id == second.id and [p.position for p in item.photos] == [0, 1]
     from app.services.colors import nearest_color_name
     assert nearest_color_name(item.colors[0].hex) == "red"  # recolored from the new cover
-
-    client.post(f"/items/{item_id}/photos/{first.id}/kind", data={"kind": "other"})
-    client.post(f"/items/{item_id}/photos/{first.id}/kind", data={"kind": "bogus"})
-    assert next(p for p in _item(item_id).photos if p.id == first.id).kind == "other"
 
     r = client.get(f"/items/{item_id}/photos/{second.id}/delete")
     assert "It's the cover" in r.text and len(_item(item_id).photos) == 2  # confirm only
@@ -94,7 +90,7 @@ def test_add_photo_set_cover_change_kind_delete(client, settings):
 
 def test_photo_limit_and_empty_add(client, monkeypatch):
     item_id = _create_with(client, [NAVY])
-    r = client.post(f"/items/{item_id}/photos", data={"kind": "real"})
+    r = client.post(f"/items/{item_id}/photos", data={"kind": "fit"})
     assert r.status_code == 422 and "Choose a photo" in r.text
     import app.services.library as library
     monkeypatch.setattr(library, "MAX_PHOTOS", 2)

@@ -5,10 +5,12 @@ from typing import List, Optional
 from sqlmodel import Field, Relationship, SQLModel
 
 SEASONS = ["spring", "summer", "autumn", "winter"]
-PHOTO_KINDS = {"product": "Product photo", "real": "Real photo", "detail": "Detail", "other": "Other"}
+# Item photos get their background removed (and only the cutout is kept); fit pictures keep it.
+PHOTO_KINDS = {"product": "Item photo", "fit": "Fit picture"}
 MAX_PHOTOS = 12
-# Background removal per photo: pending -> done (cutout made) | none (no clear subject) | failed
-CUTOUT_STATES = ("pending", "done", "none", "failed")
+# Background removal per photo: pending -> done (cutout made) | none (no clear subject) | failed;
+# skip = a fit picture, never cut out
+CUTOUT_STATES = ("pending", "done", "none", "failed", "skip")
 
 
 def utcnow() -> datetime:
@@ -73,8 +75,9 @@ class Item(SQLModel, table=True):
 
 
 class ItemPhoto(SQLModel, table=True):
-    """One photo of an item. Files: data/images/{orig,display,thumb}/<image_file>.*, and once the
-    background is removed data/images/cutout/<cutout_file>.webp + .thumb.webp (made by app.worker)."""
+    """One photo of an item. Files: data/images/{orig,display,thumb}/<image_file>.* until the
+    background is removed; then only data/images/cutout/<cutout_file>.webp + .thumb.webp (made by
+    app.worker, which deletes the photo with its background)."""
     __tablename__ = "item_photo"
     id: Optional[int] = Field(default=None, primary_key=True)
     item_id: int = Field(foreign_key="item.id", ondelete="CASCADE", index=True)
@@ -87,19 +90,18 @@ class ItemPhoto(SQLModel, table=True):
     height: int = 0
     cutout_file: Optional[str] = Field(default=None, max_length=64)  # new name on every redo
     cutout_status: str = Field(default="pending", max_length=12, index=True)  # CUTOUT_STATES
-    show_cutout: bool = True  # the user can switch back to the photo with its background
     created_at: datetime = Field(default_factory=utcnow)
 
     item: Optional[Item] = Relationship(back_populates="photos")
 
     @property
     def kind_label(self) -> str:
-        return PHOTO_KINDS.get(self.kind, "Other")
+        return PHOTO_KINDS.get(self.kind, "Item photo")
 
     @property
     def cutout_shown(self) -> Optional[str]:
-        """The cutout's file name if it exists and should be shown instead of the photo."""
-        if self.show_cutout and self.cutout_status == "done" and self.cutout_file:
+        """The cutout's file name once the background is removed (the photo itself is gone then)."""
+        if self.cutout_status == "done" and self.cutout_file:
             return self.cutout_file
         return None
 

@@ -151,6 +151,11 @@ def clean_kind(kind: str, default: str = "product") -> str:
     return kind if kind in PHOTO_KINDS else default
 
 
+def _cutout_status(kind: str) -> str:
+    """Fit pictures keep their background; every other photo is queued for the cutout worker."""
+    return "skip" if kind == "fit" else "pending"
+
+
 def extract_from_page(url: str) -> Extracted:
     """Raises UserError with a friendly message when nothing usable is found."""
     try:
@@ -181,6 +186,12 @@ def cleanup_staging(max_age: int = STAGING_MAX_AGE) -> int:
                 pass
             side.unlink(missing_ok=True)
             removed += 1
+    # Photos whose background was removed keep only the cutout (the worker deletes the rest; this
+    # catches photos cut out before that, or a worker stopped in between).
+    with Session(get_engine()) as session:
+        for stem, ext in session.exec(select(ItemPhoto.image_file, ItemPhoto.image_ext)
+                                      .where(ItemPhoto.cutout_status == "done")).all():
+            images.delete_files(settings.images_dir, stem, ext)
     # Image files that no item and no staged upload refers to (e.g. left by a crash).
     with Session(get_engine()) as session:
         keep = set(session.exec(select(ItemPhoto.image_file)).all())
@@ -325,7 +336,8 @@ def create_item(session: Session, data: ItemData, photos: Sequence[Tuple[str, st
     item = Item(name=data.name, category_id=data.category_id)
     _apply(item, data, session)
     item.photos = [
-        ItemPhoto(position=i, kind=kind, image_file=st.token, image_ext=st.ext,
+        ItemPhoto(position=i, kind=kind, cutout_status=_cutout_status(kind),
+                  image_file=st.token, image_ext=st.ext,
                   image_sha256=st.sha256, width=st.width, height=st.height)
         for i, (st, kind) in enumerate(staged)
     ]
@@ -348,8 +360,9 @@ def check_room(item: Item, adding: int = 1) -> None:
 
 def add_photo(session: Session, item: Item, processed: images.ProcessedImage,
               kind: str) -> ItemPhoto:
+    kind = clean_kind(kind)
     photo = ItemPhoto(
-        position=len(item.photos), kind=clean_kind(kind, "other"),
+        position=len(item.photos), kind=kind, cutout_status=_cutout_status(kind),
         image_file=processed.stem, image_ext=processed.ext, image_sha256=processed.sha256,
         width=processed.width, height=processed.height,
     )
@@ -386,26 +399,9 @@ def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:
     session.commit()
 
 
-def set_kind(session: Session, photo: ItemPhoto, kind: str) -> None:
-    photo.kind = clean_kind(kind, photo.kind)
-    session.add(photo)
-    session.commit()
-
-
-def set_show_cutout(session: Session, item: Item, photo: ItemPhoto, show: bool) -> None:
-    """Switch between the cutout and the photo with its background."""
-    photo.show_cutout = show
-    session.add(photo)
-    session.flush()
-    if item.cover is not None and item.cover.id == photo.id:
-        _recolor(session, item)
-    session.commit()
-
-
 def retry_cutout(session: Session, photo: ItemPhoto) -> None:
     """Queue the photo for background removal again (the worker picks it up within seconds)."""
     photo.cutout_status = "pending"
-    photo.show_cutout = True
     session.add(photo)
     session.commit()
 

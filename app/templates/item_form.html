@@ -3,24 +3,42 @@
 {% block content %}
 <h1>{{ "Edit " ~ item.name if item else "New item" }}</h1>
 {% if errors %}<div class="error" role="alert">Please fix the highlighted fields.</div>{% endif %}
+{% for w in warnings %}<div class="error" role="alert">Skipped: {{ w }}</div>{% endfor %}
 <div class="form-layout">
   <div class="form-image">
-    {% if item %}<img src="{{ media_url(item, 'display') }}" alt="">
-    {% elif staged %}<img src="{{ staged_url(staged) }}" alt="">
-      {% if staged.colors %}
+    {% if item %}
+      <img src="{{ media_url(item, 'display') }}" alt="">
+      <p class="muted small">{{ item.photos|length }} photo{{ "" if item.photos|length == 1 else "s" }}. Add or change photos on the <a href="/items/{{ item.id }}">item page</a>.</p>
+    {% elif staged %}
+      {% set first = staged[0][0] %}
+      <img src="{{ staged_url(first) }}" alt="">
+      {% if first.colors %}
       <div class="swatches" aria-label="Colors found">
-        {% for c in staged.colors %}
+        {% for c in first.colors %}
         <button type="button" class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"
           onclick="document.getElementById('color_hex').value='{{ c.hex }}';document.getElementById('color_pick').value='{{ c.hex }}';document.getElementById('color_name').value='';"></button>
         {% endfor %}
       </div>
       <p class="muted small">Click a swatch to use it as the primary color.</p>
       {% endif %}
+      <ul class="staged">
+        {% for s, kind in staged %}
+        <li>
+          <img src="{{ staged_url(s, 'thumb') }}" alt="">
+          <input type="hidden" name="image_token" value="{{ s.token }}" form="item-form">
+          <select name="photo_kind" form="item-form" aria-label="Photo {{ loop.index }} type">
+            {% for key, label in PHOTO_KINDS.items() %}
+            <option value="{{ key }}" {% if key == kind %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {% if loop.first %}<span class="badge">Cover</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
     {% endif %}
   </div>
 
-  <form method="post" action="{{ '/items/%d/edit'|format(item.id) if item else '/items' }}" class="item-form">
-    {% if staged %}<input type="hidden" name="image_token" value="{{ staged.token }}">{% endif %}
+  <form method="post" id="item-form" action="{{ '/items/%d/edit'|format(item.id) if item else '/items' }}" class="item-form">
 
     <label class="{{ 'invalid' if errors.name }}">Name
       <input name="name" value="{{ data.name }}" required maxlength="200" autofocus>

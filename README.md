@@ -8,12 +8,21 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
 - Background, decisions and status log: `PROJECT_NOTES.md`. Original plan: `PLAN.md`.
 
 ## Using it
+- **"Add to wardrobe" bookmark** (best for stores that block links, e.g. Loro Piana): on *Add item*,
+  drag the **+ Add to wardrobe** button to your bookmarks bar (Ctrl+Shift+B shows the bar). On a product
+  page, click the bookmark. It runs in your own browser on the page you have open, collects the product
+  images, name and brand, and opens the app so you can tick which photos to keep. It sends nothing
+  anywhere except to this app. If the store's image server refuses the Pi, upload the photo instead.
 - **Add item → From a product link:** paste a store URL. The server looks for the main image
   (og:image, then JSON-LD Product, then the largest `<img>`), plus the name and brand, and shows a preview.
   If the store blocks it, use **Paste an image URL** (right-click the picture → *Copy image address*)
   or **Upload a photo**. Images are always downloaded and stored on the Pi.
-- **Upload a photo:** JPEG up to 40 MP; PNG/GIF up to 8.5 MP; WebP up to 6 MP; 20 MB max file size.
-  For iPhone HEIC, export as JPEG first.
+- **Several photos per item** (up to 12), each with a type: *Product photo, Real photo, Detail, Other*.
+  The first one is the **cover** (grid thumbnail, and the item's colors come from it). On an item's page:
+  click a thumbnail to view it, **+ Add photos** (upload or image URL), change its type, **Make cover**,
+  or **Delete photo…** (with a confirmation; the last photo can't be deleted). Up to 6 photos can be added at once.
+- **Upload photos:** JPEG up to 40 MP; PNG/GIF up to 8.5 MP; WebP up to 6 MP; 20 MB max file size.
+  For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
 - The primary color is pre-filled from the photo (white backgrounds are ignored). Click a swatch or
   use the picker to change it.
 - **Browse:** category chips, search (name, brand, tag) and sort.

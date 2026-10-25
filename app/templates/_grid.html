@@ -4,7 +4,9 @@
   {% for item in items %}
   <li class="card">
     <a href="/items/{{ item.id }}">
-      <div class="thumb"><img src="{{ media_url(item) }}" alt="" loading="lazy"></div>
+      <div class="thumb"><img src="{{ media_url(item) }}" alt="" loading="lazy">
+        {% if item.photos|length > 1 %}<span class="count-badge" title="{{ item.photos|length }} photos">{{ item.photos|length }}</span>{% endif %}
+      </div>
       <div class="card-body">
         <div class="card-title">
           {% if item.color_hex %}<span class="dot" style="background: {{ item.color_hex }}"

@@ -5,6 +5,8 @@ from typing import List, Optional
 from sqlmodel import Field, Relationship, SQLModel
 
 SEASONS = ["spring", "summer", "autumn", "winter"]
+PHOTO_KINDS = {"product": "Product photo", "real": "Real photo", "detail": "Detail", "other": "Other"}
+MAX_PHOTOS = 12
 
 
 def utcnow() -> datetime:
@@ -43,13 +45,6 @@ class Item(SQLModel, table=True):
     seasons: str = Field(default="", max_length=60)  # comma list from SEASONS
     notes: str = Field(default="", max_length=4000)
     source_url: str = Field(default="", max_length=2000)
-    # Images live in data/images/{orig,display,thumb}/<image_file stem>.*
-    image_file: str = Field(default="", max_length=64)
-    image_ext: str = Field(default="jpg", max_length=8)  # extension of the original
-    image_sha256: str = Field(default="", max_length=64)
-    width: int = 0
-    height: int = 0
-    cutout_file: Optional[str] = Field(default=None, max_length=64)  # future: rembg on the PC
     created_at: datetime = Field(default_factory=utcnow, index=True)
     updated_at: datetime = Field(default_factory=utcnow)
 
@@ -59,10 +54,41 @@ class Item(SQLModel, table=True):
         back_populates="item",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ItemColor.rank"},
     )
+    photos: List["ItemPhoto"] = Relationship(
+        back_populates="item",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ItemPhoto.position"},
+    )
 
     @property
     def season_list(self) -> List[str]:
         return [s for s in self.seasons.split(",") if s]
+
+    @property
+    def cover(self) -> Optional["ItemPhoto"]:
+        """The first photo: shown in the grid, and the source of the item's colors."""
+        return self.photos[0] if self.photos else None
+
+
+class ItemPhoto(SQLModel, table=True):
+    """One photo of an item. Files: data/images/{orig,display,thumb}/<image_file>.*"""
+    __tablename__ = "item_photo"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    item_id: int = Field(foreign_key="item.id", ondelete="CASCADE", index=True)
+    position: int = 0  # 0 = cover
+    kind: str = Field(default="product", max_length=20)  # key of PHOTO_KINDS
+    image_file: str = Field(max_length=64)
+    image_ext: str = Field(default="jpg", max_length=8)  # extension of the original
+    image_sha256: str = Field(default="", max_length=64)
+    width: int = 0
+    height: int = 0
+    cutout_file: Optional[str] = Field(default=None, max_length=64)  # future: rembg on the PC
+    created_at: datetime = Field(default_factory=utcnow)
+
+    item: Optional[Item] = Relationship(back_populates="photos")
+
+    @property
+    def kind_label(self) -> str:
+        return PHOTO_KINDS.get(self.kind, "Other")
 
 
 class ItemColor(SQLModel, table=True):

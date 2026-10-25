@@ -126,3 +126,34 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
   .preview, .form-layout, .detail, .row { grid-template-columns: 1fr; }
   main { padding: 1rem; }
 }
+
+/* photos */
+.thumb { position: relative; }
+.count-badge {
+  position: absolute; right: .5rem; bottom: .5rem; background: rgba(31,31,31,.72); color: #fff;
+  font-size: .75rem; border-radius: 999px; padding: 0 .5rem; line-height: 1.5rem;
+}
+.badge { display: inline-block; background: #eef0ec; border-radius: 999px; padding: 0 .6rem; font-size: .85rem; }
+.photo-bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
+.photo-bar select { width: auto; }
+.inline-mini { display: inline; margin: 0; }
+.strip { list-style: none; padding: 0; margin: .5rem 0 1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+.strip li { width: 76px; height: 95px; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: #fff; }
+.strip li.current { border-color: var(--accent); }
+.strip img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.add-photo summary { cursor: pointer; font-weight: 500; }
+.add-photo form { margin-top: .75rem; }
+.staged { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .75rem; }
+.staged li { display: flex; flex-direction: column; gap: .3rem; }
+.staged img { width: 100%; aspect-ratio: 4 / 5; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.staged select { font-size: .85rem; padding: .25rem .4rem; }
+
+/* import preview */
+.candidates { list-style: none; padding: 0; margin: 0 0 .75rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; }
+.candidate { display: block; position: relative; cursor: pointer; border: 2px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.candidate img { width: 100%; aspect-ratio: 4 / 5; object-fit: contain; display: block; }
+.candidate input { position: absolute; top: .5rem; left: .5rem; width: 1.2rem; height: 1.2rem; }
+.candidate:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.import-fields { max-width: 520px; margin-bottom: 1rem; }
+.bookmark { margin-top: 1rem; }
+.bookmarklet { cursor: grab; margin-left: .5rem; }

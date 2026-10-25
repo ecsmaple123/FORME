@@ -1,8 +1,10 @@
-"""Item operations used by the routes: staging images, create/update/delete, search, categories.
+"""Item operations used by the routes: staging images, create/update/delete, photos, search,
+categories.
 
-Adding an item is two steps. First the image is *staged* (stored, with a JSON sidecar in
-data/staging/), then the form is saved and the staged image is attached to the new item.
-Abandoned staged images are removed after a day.
+Adding an item is two steps. First its photos are *staged* (stored, with a JSON sidecar each in
+data/staging/), then the form is saved and the staged photos are attached to the new item (the
+first one is the cover). Abandoned staged photos are removed after a day. Photos added to an
+existing item skip staging.
 """
 import json
 import os
@@ -12,7 +14,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import BinaryIO, Dict, List, Optional
+from typing import BinaryIO, Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
@@ -20,7 +22,8 @@ from sqlmodel import Session, select
 
 from ..config import get_settings
 from ..db import get_engine
-from ..models import SEASONS, Category, Item, ItemColor, ItemTag, OutfitItem, Tag, utcnow
+from ..models import (MAX_PHOTOS, PHOTO_KINDS, SEASONS, Category, Item, ItemColor, ItemPhoto,
+                      ItemTag, OutfitItem, Tag, utcnow)
 from . import colors, fetch, images
 from .extract import Extracted, parse_product_html
 
@@ -28,6 +31,7 @@ STEM_RE = re.compile(r"^[0-9a-f]{32}$")
 HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 STAGING_MAX_AGE = 24 * 3600
 SORTS = {"new": "Newest first", "old": "Oldest first", "name": "Name A–Z"}
+MAX_PER_REQUEST = 6  # photos per upload / import at once
 
 
 class UserError(ValueError):
@@ -80,7 +84,7 @@ def _tempfile() -> Path:
     return Path(name)
 
 
-def stage_upload(stream: BinaryIO) -> Staged:
+def ingest_upload(stream: BinaryIO) -> images.ProcessedImage:
     settings = get_settings()
     tmp = _tempfile()
     try:
@@ -93,23 +97,58 @@ def stage_upload(stream: BinaryIO) -> Staged:
                 out.write(chunk)
         if size == 0:
             raise UserError("No file was uploaded.")
-        return _stage(images.ingest(tmp, settings.images_dir))
+        return images.ingest(tmp, settings.images_dir)
     except images.ImageError as exc:
         raise UserError(str(exc))
     finally:
         tmp.unlink(missing_ok=True)
 
 
-def stage_from_image_url(image_url: str, referer: Optional[str] = None) -> Staged:
+def ingest_image_url(image_url: str, referer: Optional[str] = None) -> images.ProcessedImage:
     settings = get_settings()
     tmp = _tempfile()
     try:
         sha = fetch.download_image(image_url, tmp, settings.max_upload_bytes, referer=referer)
-        return _stage(images.ingest(tmp, settings.images_dir, sha256=sha))
+        return images.ingest(tmp, settings.images_dir, sha256=sha)
     except (fetch.FetchError, images.ImageError) as exc:
         raise UserError(str(exc))
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def stage_upload(stream: BinaryIO) -> Staged:
+    return _stage(ingest_upload(stream))
+
+
+def stage_from_image_url(image_url: str, referer: Optional[str] = None) -> Staged:
+    return _stage(ingest_image_url(image_url, referer))
+
+
+def run_many(jobs: Sequence, label: str) -> Tuple[list, List[str]]:
+    """Run several photo jobs (zero-arg callables); returns (results, error messages)."""
+    if len(jobs) > MAX_PER_REQUEST:
+        raise UserError(f"Add at most {MAX_PER_REQUEST} photos at once.")
+    done, errors = [], []
+    for n, job in enumerate(jobs, 1):
+        try:
+            done.append(job())
+        except UserError as exc:
+            errors.append(f"{label} {n}: {exc}" if len(jobs) > 1 else str(exc))
+    return done, errors
+
+
+def clean_image_urls(urls: Sequence[str]) -> List[str]:
+    """Candidate image URLs from a page or the bookmark: http(s) only, de-duplicated, max 10."""
+    out: List[str] = []
+    for u in urls:
+        u = (u or "").strip()
+        if re.match(r"^https?://", u, re.I) and len(u) <= 2000 and u not in out:
+            out.append(u)
+    return out[:10]
+
+
+def clean_kind(kind: str, default: str = "product") -> str:
+    return kind if kind in PHOTO_KINDS else default
 
 
 def extract_from_page(url: str) -> Extracted:
@@ -144,7 +183,7 @@ def cleanup_staging(max_age: int = STAGING_MAX_AGE) -> int:
             removed += 1
     # Image files that no item and no staged upload refers to (e.g. left by a crash).
     with Session(get_engine()) as session:
-        keep = set(session.exec(select(Item.image_file)).all())
+        keep = set(session.exec(select(ItemPhoto.image_file)).all())
     keep |= {side.stem for side in settings.staging_dir.glob("*.json")}
     for kind in ("orig", "display", "thumb"):
         for f in (settings.images_dir / kind).iterdir():
@@ -253,24 +292,109 @@ def _drop_unused_tags(session: Session) -> None:
 
 # ---------- items ----------
 
-def create_item(session: Session, data: ItemData, token: str) -> Item:
-    staged = load_staged(token)
-    item = Item(
-        name=data.name, category_id=data.category_id, image_file=staged.token,
-        image_ext=staged.ext, image_sha256=staged.sha256,
-        width=staged.width, height=staged.height,
-    )
+def _color_rows(found: Sequence) -> List[ItemColor]:
+    """ItemColor rows from staged color dicts or images.DominantColor objects."""
+    rows = []
+    for i, c in enumerate(found):
+        if not isinstance(c, dict):
+            c = {"hex": c.hex, "share": c.share, "lab": c.lab, "hue": c.hue}
+        rows.append(ItemColor(rank=i, hex=c["hex"], share=c["share"], lab_l=c["lab"][0],
+                              lab_a=c["lab"][1], lab_b=c["lab"][2], hue=c["hue"]))
+    return rows
+
+
+def create_item(session: Session, data: ItemData, photos: Sequence[Tuple[str, str]]) -> Item:
+    """photos: (staged token, kind) pairs; the first becomes the cover."""
+    if not photos:
+        raise UserError("Add at least one photo.")
+    staged = [(load_staged(token), clean_kind(kind)) for token, kind in photos[:MAX_PHOTOS]]
+    item = Item(name=data.name, category_id=data.category_id)
     _apply(item, data, session)
-    item.colors = [
-        ItemColor(rank=i, hex=c["hex"], share=c["share"], lab_l=c["lab"][0], lab_a=c["lab"][1],
-                  lab_b=c["lab"][2], hue=c["hue"])
-        for i, c in enumerate(staged.colors)
+    item.photos = [
+        ItemPhoto(position=i, kind=kind, image_file=st.token, image_ext=st.ext,
+                  image_sha256=st.sha256, width=st.width, height=st.height)
+        for i, (st, kind) in enumerate(staged)
     ]
+    item.colors = _color_rows(staged[0][0].colors)
     session.add(item)
     session.commit()
-    _sidecar(token).unlink(missing_ok=True)
+    for st, _kind in staged:
+        _sidecar(st.token).unlink(missing_ok=True)
     session.refresh(item)
     return item
+
+
+# ---------- photos of an existing item ----------
+
+def check_room(item: Item, adding: int = 1) -> None:
+    if len(item.photos) + adding > MAX_PHOTOS:
+        raise UserError(f"An item can have at most {MAX_PHOTOS} photos "
+                        f"(this one has {len(item.photos)}).")
+
+
+def add_photo(session: Session, item: Item, processed: images.ProcessedImage,
+              kind: str) -> ItemPhoto:
+    photo = ItemPhoto(
+        position=len(item.photos), kind=clean_kind(kind, "other"),
+        image_file=processed.stem, image_ext=processed.ext, image_sha256=processed.sha256,
+        width=processed.width, height=processed.height,
+    )
+    item.photos.append(photo)
+    item.updated_at = utcnow()
+    session.add(item)
+    session.commit()
+    session.refresh(photo)
+    return photo
+
+
+def _renumber(ordered: List[ItemPhoto]) -> None:
+    for i, p in enumerate(ordered):
+        p.position = i
+
+
+def _recolor(session: Session, item: Item) -> None:
+    """Item colors always come from the cover photo."""
+    item.colors = []
+    session.flush()
+    cover = item.cover
+    if cover:
+        item.colors = _color_rows(images.colors_of(get_settings().images_dir, cover.image_file))
+
+
+def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:
+    ordered = [photo] + [p for p in item.photos if p.id != photo.id]
+    _renumber(ordered)
+    item.photos = ordered
+    _recolor(session, item)
+    item.updated_at = utcnow()
+    session.add(item)
+    session.commit()
+
+
+def set_kind(session: Session, photo: ItemPhoto, kind: str) -> None:
+    photo.kind = clean_kind(kind, photo.kind)
+    session.add(photo)
+    session.commit()
+
+
+def delete_photo(session: Session, item: Item, photo: ItemPhoto) -> None:
+    if len(item.photos) <= 1:
+        raise UserError("This is the item's only photo. Add another one first, or delete the item.")
+    was_cover = item.cover is not None and item.cover.id == photo.id
+    stem, ext = photo.image_file, photo.image_ext
+    item.photos = [p for p in item.photos if p.id != photo.id]  # delete-orphan removes the row
+    _renumber(item.photos)
+    session.flush()
+    if was_cover:
+        _recolor(session, item)
+    item.updated_at = utcnow()
+    session.add(item)
+    session.commit()
+    images.delete_files(get_settings().images_dir, stem, ext)
+
+
+def get_photo(item: Item, photo_id: int) -> Optional[ItemPhoto]:
+    return next((p for p in item.photos if p.id == photo_id), None)
 
 
 def update_item(session: Session, item: Item, data: ItemData) -> Item:
@@ -284,26 +408,29 @@ def update_item(session: Session, item: Item, data: ItemData) -> Item:
 
 
 def delete_item(session: Session, item: Item) -> None:
-    stem, ext = item.image_file, item.image_ext
+    files = [(p.image_file, p.image_ext) for p in item.photos]
     for link in session.exec(select(OutfitItem).where(OutfitItem.item_id == item.id)).all():
         session.delete(link)
     session.delete(item)
     session.flush()
     _drop_unused_tags(session)
     session.commit()
-    images.delete_files(get_settings().images_dir, stem, ext)
+    for stem, ext in files:
+        images.delete_files(get_settings().images_dir, stem, ext)
 
 
 def get_item(session: Session, item_id: int) -> Optional[Item]:
     return session.exec(
         select(Item).where(Item.id == item_id)
-        .options(selectinload(Item.tags), selectinload(Item.colors), selectinload(Item.category))
+        .options(selectinload(Item.tags), selectinload(Item.colors), selectinload(Item.category),
+                 selectinload(Item.photos))
     ).first()
 
 
 def search_items(session: Session, q: str = "", category_id: Optional[int] = None,
                  sort: str = "new") -> List[Item]:
-    stmt = select(Item).options(selectinload(Item.category), selectinload(Item.tags))
+    stmt = select(Item).options(selectinload(Item.category), selectinload(Item.tags),
+                                selectinload(Item.photos))
     if category_id:
         stmt = stmt.where(Item.category_id == category_id)
     q = (q or "").strip()

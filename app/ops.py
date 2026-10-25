@@ -127,7 +127,7 @@ def rebuild_images() -> int:
     s.ensure_dirs()
     con = sqlite3.connect(str(s.db_path))
     try:
-        rows = con.execute("SELECT image_file, image_ext FROM item WHERE image_file != ''").fetchall()
+        rows = con.execute("SELECT image_file, image_ext FROM item_photo").fetchall()
     finally:
         con.close()
     done = 0

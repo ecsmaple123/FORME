@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Delete photo · Wardrobe{% endblock %}
+{% block content %}
+<div class="panel confirm">
+  <img src="{{ media_url(photo) }}" alt="">
+  <div>
+    <h1>Delete this photo?</h1>
+    <p>{{ photo.kind_label }} of “{{ item.name }}”.
+      {% if photo.position == 0 %}It's the cover, so the next photo becomes the cover and the item's colors are recalculated from it.{% endif %}
+      The item itself stays.</p>
+    <form method="post" action="/items/{{ item.id }}/photos/{{ photo.id }}/delete" class="actions">
+      <button class="danger" type="submit">Yes, delete the photo</button>
+      <a class="button" href="/items/{{ item.id }}?photo={{ photo.id }}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

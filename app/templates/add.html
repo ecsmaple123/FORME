@@ -12,19 +12,26 @@
         <input type="url" name="url" value="{{ url }}" placeholder="https://store.example/product/…" required>
       </label>
       <button class="primary" type="submit">Fetch product</button>
-      <p class="muted small">Gets the main image, name and brand. Some stores block this; if so, use one of the options below.</p>
+      <p class="muted small">Gets the main image, name and brand. Some stores block this. If so, use the bookmark below, or one of the other options.</p>
     </form>
   </section>
 
   <section class="panel">
-    <h2>Upload a photo</h2>
+    <h2>Upload photos</h2>
     <form method="post" action="/add/photo" enctype="multipart/form-data" class="stack">
-      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" required>
+      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
+      <label>Photo type
+        <select name="photo_kind">
+          {% for key, label in PHOTO_KINDS.items() %}
+          <option value="{{ key }}" {% if key == "real" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
       <input type="hidden" name="source_url" value="{{ url }}">
       <input type="hidden" name="name" value="{{ name }}">
       <input type="hidden" name="brand" value="{{ brand }}">
       <button class="primary" type="submit">Upload</button>
-      <p class="muted small">JPEG, PNG or WebP, up to 20 MB.</p>
+      <p class="muted small">Up to {{ MAX_PER_REQUEST }} at once. JPEG, PNG or WebP, 20 MB each. You can change each photo's type on the next page.</p>
     </form>
   </section>
 
@@ -44,4 +51,16 @@
     </form>
   </section>
 </div>
+
+<section class="panel bookmark">
+  <h2>“Add to wardrobe” bookmark (works on stores that block links)</h2>
+  <p>Drag this button to your browser's bookmarks bar:
+    <a class="button primary bookmarklet" href="{{ bookmarklet }}" onclick="alert('Drag this button to your bookmarks bar. Then click the bookmark while viewing a product page.'); return false;">+ Add to wardrobe</a>
+  </p>
+  <p class="muted small">
+    Then, on any product page, click the bookmark. It runs in <em>your</em> browser on the page you already
+    have open, reads the product images, name and brand, and opens this app with them so you can pick the
+    photos to keep. It sends nothing anywhere except to this app. (Show the bookmarks bar with Ctrl+Shift+B.)
+  </p>
+</section>
 {% endblock %}

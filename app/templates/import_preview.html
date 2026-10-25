@@ -1,38 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Import preview · Wardrobe{% endblock %}
 {% block content %}
-<h1>Is this the product?</h1>
-<div class="preview">
-  <div class="preview-img">
-    <img src="{{ found.image_url }}" alt="" referrerpolicy="no-referrer">
-    <p class="muted small">Shown straight from the store for this preview only. It's saved on the Pi when you continue.</p>
-  </div>
-  <form method="post" action="/add/image-url" class="stack panel">
-    <input type="hidden" name="image_url" value="{{ found.image_url }}">
-    <input type="hidden" name="source_url" value="{{ url }}">
-    <label>Name <input name="name" value="{{ found.title }}"></label>
-    <label>Brand <input name="brand" value="{{ found.brand }}"></label>
-    <p class="muted small">Image found via {{ {"og": "the page's share image", "json-ld": "the product data", "img": "the largest picture on the page"}[found.image_source] }}.</p>
+<h1>{{ "Pick the photos to keep" if candidates|length > 1 else "Is this the product?" }}</h1>
+<form method="post" action="/add/image-url" class="import">
+  <input type="hidden" name="source_url" value="{{ url }}">
+  <ul class="candidates">
+    {% for c in candidates %}
+    <li>
+      <label class="candidate">
+        <input type="checkbox" name="image_url" value="{{ c }}" {% if loop.first %}checked{% endif %}>
+        <img src="{{ c }}" alt="" referrerpolicy="no-referrer" loading="lazy">
+      </label>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="muted small">
+    {% if via == "bookmark" %}Found by the bookmark on the page you had open.
+    {% else %}Found via {{ {"og": "the page's share image", "json-ld": "the product data", "img": "the largest picture on the page"}[via] }}.{% endif %}
+    The previews load straight from the store. The photos you tick are saved on the Pi, the first one as the cover.
+    Up to {{ MAX_PER_REQUEST }}.
+  </p>
+  <div class="panel stack import-fields">
+    <label>Name <input name="name" value="{{ title }}"></label>
+    <label>Brand <input name="brand" value="{{ brand }}"></label>
+    {% if url %}<p class="muted small">Source: {{ url|truncate(80) }}</p>{% endif %}
     <div class="actions">
-      <button class="primary" type="submit">Use this — continue</button>
+      <button class="primary" type="submit">Continue</button>
       <a class="button" href="/add">Start over</a>
     </div>
-  </form>
-</div>
+  </div>
+</form>
 <details class="panel">
-  <summary>Wrong picture? Paste the image URL or upload instead</summary>
+  <summary>None of these? Paste the image URL or upload instead</summary>
   <form method="post" action="/add/image-url" class="stack">
     <input type="hidden" name="source_url" value="{{ url }}">
-    <input type="hidden" name="name" value="{{ found.title }}">
-    <input type="hidden" name="brand" value="{{ found.brand }}">
+    <input type="hidden" name="name" value="{{ title }}">
+    <input type="hidden" name="brand" value="{{ brand }}">
     <label>Image URL <input type="url" name="image_url" required></label>
     <button type="submit">Use this image</button>
   </form>
   <form method="post" action="/add/photo" enctype="multipart/form-data" class="stack">
     <input type="hidden" name="source_url" value="{{ url }}">
-    <input type="hidden" name="name" value="{{ found.title }}">
-    <input type="hidden" name="brand" value="{{ found.brand }}">
-    <label>Or upload a photo <input type="file" name="photo" accept="image/*" required></label>
+    <input type="hidden" name="name" value="{{ title }}">
+    <input type="hidden" name="brand" value="{{ brand }}">
+    <input type="hidden" name="photo_kind" value="product">
+    <label>Or upload photos <input type="file" name="photo" accept="image/*" multiple required></label>
     <button type="submit">Upload</button>
   </form>
 </details>

@@ -247,3 +247,9 @@ def ingest(src: Path, images_dir: Path, sha256: Optional[str] = None) -> Process
     return ProcessedImage(
         stem=stem, ext=ext, sha256=sha256 or sha256_file(src), width=w, height=h, colors=found,
     )
+
+
+def colors_of(images_dir: Path, stem: str) -> List[DominantColor]:
+    """Dominant colors of a stored photo, read from its (small) thumbnail."""
+    with Image.open(paths(images_dir, stem)["thumb"]) as thumb:
+        return dominant_colors(thumb.convert("RGB"))

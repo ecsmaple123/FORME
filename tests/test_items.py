@@ -35,7 +35,7 @@ def _item(item_id):
     with Session(get_engine()) as s:
         item = s.get(Item, item_id)
         if item:
-            _ = item.tags, item.colors
+            _ = item.tags, item.colors, item.photos
         return item
 
 
@@ -83,7 +83,7 @@ def test_add_edit_delete(client, settings):
     r = client.get(f"/items/{item_id}/delete")
     assert "Yes, delete it" in r.text
     assert _item(item_id) is not None  # the confirm page alone deletes nothing
-    files = paths(settings.images_dir, item.image_file, item.image_ext)
+    files = paths(settings.images_dir, item.cover.image_file, item.cover.image_ext)
     r = client.post(f"/items/{item_id}/delete", follow_redirects=False)
     assert r.status_code == 303
     assert _item(item_id) is None
@@ -174,7 +174,7 @@ def test_backup_and_restore(client, settings):
     ops.restore(str(archive))
     item = _item(item_id)
     assert item is not None and item.name == "Keep me"
-    p = paths(settings.images_dir, item.image_file, item.image_ext)
+    p = paths(settings.images_dir, item.cover.image_file, item.cover.image_ext)
     assert all(f.is_file() for f in p.values())  # display + thumb rebuilt from the original
     assert list(settings.data_dir.parent.glob("data.before-restore-*"))
 
@@ -240,7 +240,7 @@ def test_cleanup_removes_orphans_only(client, settings):
     assert not orphan.exists()
     assert not (settings.staging_dir / f"{staged}.json").exists()  # staged + old: removed
     item = _item(keep_id)
-    assert all(f.exists() for f in paths(settings.images_dir, item.image_file, item.image_ext).values())
+    assert all(f.exists() for f in paths(settings.images_dir, item.cover.image_file, item.cover.image_ext).values())
 
 
 def test_truncated_jpeg_is_a_clear_error(client):

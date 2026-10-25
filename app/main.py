@@ -56,7 +56,9 @@ def create_app() -> FastAPI:
             count = session.exec(select(func.count()).select_from(Item)).one()
         return {"ok": True, "items": count}
 
-    app.add_middleware(UploadLimit, max_bytes=settings.max_upload_bytes + 1024 * 1024)
+    # Per file the cap is max_upload_bytes (checked while saving); per request allow a few files.
+    # Starlette spools uploads over 1 MB to disk, so this doesn't cost RAM.
+    app.add_middleware(UploadLimit, max_bytes=settings.max_upload_bytes * 3 + 1024 * 1024)
     return app
 
 

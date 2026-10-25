@@ -2,10 +2,67 @@
 {% block title %}{{ item.name }} · Wardrobe{% endblock %}
 {% block content %}
 <p><a href="/">← Back</a></p>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 <div class="detail">
-  <a href="{{ media_url(item, 'orig') }}" class="detail-img" title="Open the original">
-    <img src="{{ media_url(item, 'display') }}" alt="{{ item.name }}">
-  </a>
+  <div class="gallery">
+    {% if shown %}
+    <a href="{{ media_url(shown, 'orig') }}" class="detail-img" title="Open the original">
+      <img src="{{ media_url(shown, 'display') }}" alt="{{ item.name }}">
+    </a>
+    <div class="photo-bar">
+      <span class="badge">{{ shown.kind_label }}</span>
+      {% if shown.position == 0 %}<span class="badge">Cover</span>{% endif %}
+      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/kind" class="inline-mini">
+        <select name="kind" aria-label="Photo type" onchange="this.form.submit()">
+          {% for key, label in PHOTO_KINDS.items() %}
+          <option value="{{ key }}" {% if key == shown.kind %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <noscript><button type="submit">Set type</button></noscript>
+      </form>
+      {% if shown.position != 0 %}
+      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cover" class="inline-mini">
+        <button type="submit">Make cover</button>
+      </form>
+      {% endif %}
+      {% if item.photos|length > 1 %}
+      <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if item.photos|length > 1 %}
+    <ul class="strip" aria-label="Photos">
+      {% for p in item.photos %}
+      <li class="{{ 'current' if shown and p.id == shown.id }}">
+        <a href="/items/{{ item.id }}?photo={{ p.id }}" title="{{ p.kind_label }}">
+          <img src="{{ media_url(p) }}" alt="{{ p.kind_label }}" loading="lazy">
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if item.photos|length < MAX_PHOTOS %}
+    <details class="panel add-photo" {% if error %}open{% endif %}>
+      <summary>+ Add photos</summary>
+      <form method="post" action="/items/{{ item.id }}/photos" enctype="multipart/form-data" class="stack">
+        <label>Upload <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
+        <label>or image URL <input type="url" name="image_url" placeholder="https://…/image.jpg"></label>
+        <label>Type
+          <select name="kind">
+            {% for key, label in PHOTO_KINDS.items() %}
+            <option value="{{ key }}" {% if key == "real" %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="primary" type="submit">Add</button>
+        <p class="muted small">Up to {{ MAX_PHOTOS }} photos per item ({{ item.photos|length }} now).</p>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+
   <div>
     <h1>{{ item.name }}</h1>
     <dl class="facts">
@@ -21,7 +78,7 @@
     </dl>
     {% if item.notes %}<p class="notes">{{ item.notes }}</p>{% endif %}
     {% if item.colors %}
-    <div class="swatches" title="Colors found in the photo">
+    <div class="swatches" title="Colors found in the cover photo">
       {% for c in item.colors %}<span class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"></span>{% endfor %}
     </div>
     {% endif %}

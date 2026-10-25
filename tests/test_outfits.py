@@ -43,6 +43,17 @@ def test_empty_pages(client):
     assert 'href="/outfits"' in client.get("/").text
 
 
+def test_tabs_mark_the_current_page(client):
+    def current(path):
+        return re.findall(r'<a href="([^"]*)" class="tab on" aria-current="page">', client.get(path).text)
+
+    assert current("/") == ["/"]
+    assert current("/closet") == ["/closet"]
+    assert current("/outfits") == ["/outfits"] and current("/studio") == ["/studio"]
+    assert current("/settings") == [] and 'class="icon-link on"' in client.get("/settings").text
+    assert all(f'href="{h}" class="tab' in client.get("/").text for h in ("/closet", "/outfits", "/studio"))
+
+
 def test_save_list_and_detail(client):
     coat, shoes = _item(client, "Coat"), _item(client, "Boots", (90, 60, 40))
     data = _studio_data(client.get("/studio").text)

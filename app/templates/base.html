@@ -4,22 +4,31 @@
 <html lang="en" data-theme="{{ p.theme }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="{{ 'light dark' if p.theme == 'system' else p.theme }}">
   <title>{% block title %}FORME{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
+  {% set path = request.url.path %}
   <header class="topbar">
     <a class="brand" href="/">FORME</a>
-    <nav>
-      <a href="/closet">Closet</a>
-      <a href="/outfits">Outfits</a>
-      <a href="/studio" class="wide-only">Studio</a>
-      <a href="/settings" class="icon-link" title="Settings">{{ icon("settings", label="Settings") }}</a>
-      <a class="button primary" href="/add">+ Add<span class="wide-only"> item</span></a>
+    {# Centred in the header; a tab bar at the bottom of the screen on phones. #}
+    <nav class="tabs" aria-label="Main">
+      {% for href, label, ic, prefixes in [
+           ("/", "Home", "home", ()),
+           ("/closet", "Closet", "hanger", ("/closet", "/items")),
+           ("/outfits", "Outfits", "shirt", ("/outfits",)),
+           ("/studio", "Studio", "sparkle", ("/studio",))] %}
+      {% set on = path == href or (prefixes and path.startswith(prefixes)) %}
+      <a href="{{ href }}" class="tab{{ ' on' if on }}"{% if on %} aria-current="page"{% endif %}>{{ icon(ic) }}<span>{{ label }}</span></a>
+      {% endfor %}
     </nav>
+    <div class="top-actions">
+      <a href="/settings" class="icon-link{{ ' on' if path.startswith('/settings') }}" title="Settings">{{ icon("settings", label="Settings") }}</a>
+      <a class="button primary" href="/add">+ Add<span class="wide-only"> item</span></a>
+    </div>
   </header>
   <main>
     {% block content %}{% endblock %}

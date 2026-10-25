@@ -95,6 +95,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   come up with ideas, then save it to the outfit page"). Details in "Outfits and Studio". Migration 0007
   ran live after backup `wardrobe-20261025-150719`. 90 tests. No outfits saved on the live app yet.
   Possible next steps: "In outfits" on an item's page, AI outfit suggestions (`source = ai`).
+- **2026-10-25: Tabs** (user: "make the tabs more aesthetic maybe with icons, then centre them"). Home,
+  Closet, Outfits, Studio as icon tabs in a segmented pill centred in the header (grid 1fr auto 1fr),
+  current page highlighted (`aria-current`; Closet also on /items/*); Settings + "+ Add" on the right. At
+  ≤640 px the tabs become a fixed bottom tab bar (icon over label). Gotcha: the header's
+  `backdrop-filter` makes it the containing block for `position: fixed` children, so it's switched off
+  on phones. Checked with CDP screenshots (phone/tablet/desktop, light/dark). 91 tests. Live after backup
+  `wardrobe-20261025-151513`.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -270,7 +277,7 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   new-outfit board in localStorage `forme-studio-draft`. Data comes in `<script type=application/json>`
   via `|tojson` (escapes `<`). Checked by driving headless Edge over CDP (touch taps, touch drag,
   handle resize, Back, save → redirect + draft cleared); the script is PC-only, not in the repo.
-- Nav: Outfits always; Studio only on wide screens (on a phone it's the Outfits page's button).
+- Nav: see "Tabs" in the status log (Studio is a tab everywhere since then).
 
 ## Extension points (not built)
 - **AI picks:** replace the body of `featured.pick` (see above); route and templates already show `Picks.reason`.

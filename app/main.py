@@ -11,7 +11,7 @@ from sqlmodel import Session, func, select
 from .config import get_settings
 from .db import get_engine
 from .models import Item
-from .routes import add, categories, home, items, settings as settings_routes
+from .routes import add, categories, home, items, outfits, settings as settings_routes
 from .services.library import cleanup_staging
 
 APP_DIR = Path(__file__).parent
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(add.router)
     app.include_router(categories.router)
     app.include_router(settings_routes.router)
+    app.include_router(outfits.router)
 
     @app.get("/healthz")
     def healthz():

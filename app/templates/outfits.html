@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_board.html" import board %}
+{% block title %}Outfits · FORME{% endblock %}
+{% block content %}
+<div class="section-head">
+  <h1 class="page-title">Outfits</h1>
+  <a class="button primary" href="/studio">+ New in Studio</a>
+</div>
+{% if request.query_params.get("deleted") %}<p class="flash">Outfit deleted.</p>{% endif %}
+{% if outfits %}
+<ul class="grid outfit-grid">
+  {% for o in outfits %}
+  <li class="card">
+    <a href="/outfits/{{ o.id }}">
+      {{ board(o) }}
+      <div class="card-body">
+        <div class="card-title">{{ o.name }}</div>
+        <div class="muted card-fabric">{{ o.links|length }} item{{ "" if o.links|length == 1 else "s" }}</div>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No outfits yet. Put some together in the <a href="/studio">Studio</a>.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_board.html" import board %}
+{% block title %}Delete {{ outfit.name }} · FORME{% endblock %}
+{% block content %}
+<div class="panel confirm">
+  {{ board(outfit) }}
+  <div>
+    <h1>Delete “{{ outfit.name }}”?</h1>
+    <p>This removes the outfit only; its items stay in your closet.</p>
+    <form method="post" action="/outfits/{{ outfit.id }}/delete" class="actions">
+      <button class="danger" type="submit">Yes, delete it</button>
+      <a class="button" href="/outfits/{{ outfit.id }}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

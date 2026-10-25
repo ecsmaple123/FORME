@@ -130,19 +130,33 @@ class Setting(SQLModel, table=True):
 
 
 class Outfit(SQLModel, table=True):
-    """Not used by the MVP UI yet; here so outfits need no schema rework later."""
+    """An outfit made in the Studio: its items and where each sits on the board."""
     __tablename__ = "outfit"
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(max_length=200)
     notes: str = Field(default="", max_length=4000)
-    occasion: str = Field(default="", max_length=80)
-    season: str = Field(default="", max_length=60)
+    occasion: str = Field(default="", max_length=80)  # not used by the UI yet
+    season: str = Field(default="", max_length=60)  # not used by the UI yet
     source: str = Field(default="manual", max_length=20)  # manual | ai | photo-import
-    created_at: datetime = Field(default_factory=utcnow)
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+    links: List["OutfitItem"] = Relationship(
+        back_populates="outfit",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "OutfitItem.position"},
+    )
 
 
 class OutfitItem(SQLModel, table=True):
+    """One item on an outfit's board: x, y = its top-left corner and w = its width, as fractions of
+    the 3:4 board (the height follows the photo). position = stacking order, 0 at the back."""
     __tablename__ = "outfit_item"
     outfit_id: int = Field(foreign_key="outfit.id", primary_key=True, ondelete="CASCADE")
     item_id: int = Field(foreign_key="item.id", primary_key=True, ondelete="CASCADE")
     position: int = 0
+    x: float = 0.0
+    y: float = 0.0
+    w: float = 0.4
+
+    outfit: Optional[Outfit] = Relationship(back_populates="links")
+    item: Optional[Item] = Relationship()

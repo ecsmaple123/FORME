@@ -90,6 +90,11 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   see Photos) until the user edits it. Existing items were left as they are (most names were already
   edited by the user, and the rest differ from the cutout color by a few RGB steps). 84 tests. Live after
   backup `wardrobe-20261025-143057`.
+- **2026-10-25: Outfits page + Studio** (user: "an outfit page where I can browse saved outfits, it should
+  be a single card with the clothing items selected ... a studio page where i can drag and drop outfits to
+  come up with ideas, then save it to the outfit page"). Details in "Outfits and Studio". Migration 0007
+  ran live after backup `wardrobe-20261025-150719`. 90 tests. No outfits saved on the live app yet.
+  Possible next steps: "In outfits" on an item's page, AI outfit suggestions (`source = ai`).
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -250,11 +255,26 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
 - `app/services/fabric.py`: word list (garment-ish words like oxford/knit/mesh deliberately left out),
   `split_name` never empties a name. Used by migration 0005 and the add flow's name prefill.
 
+## Outfits and Studio
+- `app/services/outfits.py` (parse/validate the board JSON, save in place, list/get/delete) and
+  `app/routes/outfits.py` (`/outfits`, `/outfits/{id}`, `/studio[?outfit=id]`, `POST /outfits`,
+  delete with confirmation). Migration 0007 added `outfit_item.x/y/w` and `outfit.updated_at`.
+- Board = 3:4 frame; per item x/y = top-left and w = width as fractions of the board, height from the
+  photo; `position` = stacking order. `_board.html` renders it with percentages, so cards (thumbs) and
+  the outfit page (display images) look the same at any size. Limits: 20 items, w 0.05–1.5,
+  x/y −1–1.5 (clamped server-side).
+- Saving replaces links **in place** by item_id: re-adding a removed (outfit_id, item_id) in the same
+  flush would INSERT before DELETE and hit the primary key.
+- `static/studio.js` (no build step): pointer events (mouse/touch/pen) for move + resize, tap to add,
+  HTML5 drag-and-drop from the tray (mouse only), arrow keys/Delete on the focused board, unsaved
+  new-outfit board in localStorage `forme-studio-draft`. Data comes in `<script type=application/json>`
+  via `|tojson` (escapes `<`). Checked by driving headless Edge over CDP (touch taps, touch drag,
+  handle resize, Back, save → redirect + draft cleared); the script is PC-only, not in the repo.
+- Nav: Outfits always; Studio only on wide screens (on a phone it's the Outfits page's button).
+
 ## Extension points (not built)
 - **AI picks:** replace the body of `featured.pick` (see above); route and templates already show `Picks.reason`.
 - **Color sorting:** `item_color` (rank, hex, share, Lab, hue) is filled on every upload.
-- **Outfits:** the `outfit` and `outfit_item` tables exist (migration 0001). Deleting an item also
-  removes its outfit links.
 - **AI:** `app/services/ai.py` is the only place for Claude API calls (httpx + Messages API; key
   `ANTHROPIC_API_KEY` in `.env`, chmod 600, git-ignored). The stubs raise NotImplementedError.
 

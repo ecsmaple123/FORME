@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Studio · FORME{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ "Edit “" ~ outfit.name ~ "”" if outfit else "Studio" }}</h1>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+
+<div class="studio">
+  <div class="studio-main">
+    <div id="board" class="board studio-board" tabindex="0"
+         aria-label="Outfit board. Select an item, then use the arrow keys to move it and Delete to remove it.">
+      <p class="board-hint">Tap an item to put it here<span class="wide-only">, or drag it in</span>.</p>
+    </div>
+    <div class="studio-tools" id="tools">
+      <button type="button" data-act="smaller" title="Smaller" aria-label="Smaller">−</button>
+      <button type="button" data-act="bigger" title="Bigger" aria-label="Bigger">+</button>
+      <button type="button" data-act="front">Front</button>
+      <button type="button" data-act="back">Back</button>
+      <button type="button" data-act="remove" class="danger">Remove</button>
+      <button type="button" data-act="clear" class="ghost clear-board">Clear</button>
+    </div>
+    <p class="muted small">Drag items to move them; the round handle resizes the selected one.</p>
+  </div>
+
+  <aside class="tray panel" aria-label="Your closet">
+    <div class="chips" role="radiogroup" aria-label="Category">
+      <label class="chip"><input type="radio" name="tray-cat" value="" checked><span>All</span></label>
+      {% for c in categories %}
+      <label class="chip"><input type="radio" name="tray-cat" value="{{ c.id }}"><span>{{ c.name }}</span></label>
+      {% endfor %}
+    </div>
+    <input type="search" id="tray-q" placeholder="Search your closet" autocomplete="off" aria-label="Search your closet">
+    {% if items %}
+    <ul class="tray-grid" id="tray">
+      {% for i in items %}
+      <li data-cat="{{ i.category_id }}" data-name="{{ (i.name ~ ' ' ~ i.fabric ~ ' ' ~ i.brand)|lower }}">
+        <button type="button" class="tray-item" data-id="{{ i.id }}" draggable="true" title="{{ i.name }}">
+          <img src="{{ media_url(i) }}" alt="" loading="lazy" draggable="false">
+          <span>{{ i.name }}</span>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Your closet is empty. <a href="/add">Add an item</a> first.</p>
+    {% endif %}
+  </aside>
+
+  <form id="save-form" method="post" action="/outfits" class="panel stack studio-save">
+    <input type="hidden" name="layout" id="layout">
+    {% if outfit %}<input type="hidden" name="outfit_id" value="{{ outfit.id }}">{% endif %}
+    <label>Name <input name="name" value="{{ name }}" maxlength="200" placeholder="{{ outfit.name if outfit else placeholder }}"></label>
+    <label>Notes <textarea name="notes" rows="2" maxlength="4000" placeholder="Occasion, ideas, what to buy…">{{ notes }}</textarea></label>
+    <div class="actions">
+      <button class="primary" type="submit">{{ "Save changes" if outfit else "Save outfit" }}</button>
+      {% if outfit %}
+      <button type="submit" name="as_new" value="1">Save as new</button>
+      <a class="button ghost" href="/outfits/{{ outfit.id }}">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script id="studio-data" type="application/json">{{ studio|tojson }}</script>
+<script src="/static/studio.js" defer></script>
+{% endblock %}

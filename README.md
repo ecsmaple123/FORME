@@ -36,6 +36,13 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
 - **Color:** one color per item, detected from the cover photo (from its cutout once the background is
   removed) and kept up to date until you change it with the picker, the hex code or the name.
+- **Studio** (`/studio`; on a phone via *Outfits → + New in Studio*): tap items in the closet tray
+  (or drag them in on a computer) to put them on a board, drag to arrange, resize with the round handle
+  or −/+, *Front*/*Back* to layer, then save with a name and notes. An unsaved new board is kept in
+  your browser until you save or clear it.
+- **Outfits** (`/outfits`): every saved outfit as one card showing its items as arranged in the Studio.
+  An outfit's page lists its items, with *Edit in Studio* (save changes or *Save as new*) and *Delete…*.
+  Deleting an item takes it off any outfit.
 - **Home:** a greeting, today's weather (once a location is set) with a what-to-wear hint, four
   featured picks (random for now, the same all day; **Shuffle** for new ones) and recently added items.
 - **Settings** (gear icon): categories, your name for the greeting, **Appearance** (System / Light / Dark),

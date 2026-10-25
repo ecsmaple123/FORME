@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_board.html" import board %}
+{% from "_card.html" import card %}
+{% block title %}{{ outfit.name }} · FORME{% endblock %}
+{% block content %}
+<p><a href="/outfits">← Outfits</a></p>
+{% if request.query_params.get("saved") %}<p class="flash">Outfit saved.</p>{% endif %}
+<div class="detail">
+  <div class="gallery">{{ board(outfit, "display", "board-large") }}</div>
+  <div>
+    <h1>{{ outfit.name }}</h1>
+    {% if outfit.notes %}<p class="notes">{{ outfit.notes }}</p>{% endif %}
+    <p class="muted small">Saved {{ outfit.updated_at|date }}</p>
+    <div class="actions">
+      <a class="button primary" href="/studio?outfit={{ outfit.id }}">Edit in Studio</a>
+      <a class="button danger" href="/outfits/{{ outfit.id }}/delete">Delete…</a>
+    </div>
+    <h2 class="group-title outfit-detail-items">Items <span class="muted">{{ outfit.links|length }}</span></h2>
+    <ul class="grid outfit-items">
+      {% for link in outfit.links|reverse %}{{ card(link.item) }}{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

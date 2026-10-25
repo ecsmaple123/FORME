@@ -1,0 +1,10 @@
+{# An outfit's board as composed in the Studio: a 3:4 frame with each item's photo placed by
+   fractions (see OutfitItem), so it looks the same at any size. size: "thumb" or "display". #}
+{% macro board(outfit, size="thumb", cls="") -%}
+<div class="board {{ cls }}" role="img" aria-label="{{ outfit.links|map(attribute='item.name')|join(', ') }}">
+  {% for link in outfit.links %}
+  <img src="{{ media_url(link.item, size) }}" alt="" loading="lazy" draggable="false"
+       style="left: {{ '%.2f'|format(link.x * 100) }}%; top: {{ '%.2f'|format(link.y * 100) }}%; width: {{ '%.2f'|format(link.w * 100) }}%; z-index: {{ loop.index }}">
+  {% endfor %}
+</div>
+{%- endmacro %}

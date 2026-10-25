@@ -116,6 +116,10 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   delete in the UI; a newer note overrides an older one. Table `stylist_note`
   (migration 0009); the newest 50 go into every prompt, newest first, and the rules say newer notes win.
   "Forget my likes and dislikes" leaves them alone. 103 tests. Live after backup `wardrobe-20261025-175927`.
+- **2026-10-25: 👎 removes the card** (user: "when i thumbs down a outfit it should be removed from the
+  list. with option feedback"). On /stylist a dislike swaps the card for `_dismissed.html` ("Removed:
+  title", Undo, optional "What didn't work?" note); `stylist.recent` skips disliked suggestions, which
+  stay in the memory. Home's daily pick is unchanged (👎 there keeps the card with its note box). 104 tests.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.

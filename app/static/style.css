@@ -397,6 +397,10 @@ main section[id], main [id].panel { scroll-margin-top: 5rem; }
 .sug-items, .suggestion .card-body p { margin-bottom: 0; }
 .sug-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
 .suggestion.fresh { animation: rise .35s ease-out; }
+.suggestion.dismissed { align-self: start; animation: rise .25s ease-out; }
+.suggestion.dismissed p { margin: 0; }
+.suggestion.dismissed .undo { padding: .3rem .6rem; }
+.dismissed-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .board-hint.shown { display: flex; }
 .stylist-ask .ask-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
@@ -409,7 +413,7 @@ form.htmx-request .ask-label { display: none; }
 .note-add input { flex: 1; min-width: 0; }
 .stylist-setup ol { margin: 0; padding-left: 1.25rem; }
 .stylist-setup li + li { margin-top: .4rem; }
-@media (prefers-reduced-motion: reduce) { .pick-skeleton, .suggestion.fresh { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pick-skeleton, .suggestion.fresh, .suggestion.dismissed { animation: none; } }
 
 /* ---------- outfits and the studio ---------- */
 .board { position: relative; aspect-ratio: 3 / 4; background: var(--tile); overflow: hidden; }

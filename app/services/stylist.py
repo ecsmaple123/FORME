@@ -290,5 +290,7 @@ def counts(session: Session) -> Dict[str, int]:
 
 
 def recent(session: Session, limit: int = 12) -> List[Suggestion]:
-    return list(session.exec(select(Suggestion).where(Suggestion.source == "stylist")
+    """The Stylist page's list: disliked suggestions are left out (they stay in the memory)."""
+    return list(session.exec(select(Suggestion).where(Suggestion.source == "stylist",
+                                                      Suggestion.verdict != "dislike")
                              .order_by(Suggestion.id.desc()).limit(limit)).all())

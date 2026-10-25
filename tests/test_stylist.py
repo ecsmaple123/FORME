@@ -317,3 +317,28 @@ def test_migration_0009(tmp_path, monkeypatch):
     con.close()
     reset_engine()
     get_settings.cache_clear()
+
+
+def test_dislike_removes_the_card_with_optional_feedback_and_undo(client, gemini):
+    ids = _closet(client)
+    gemini.reply = {"outfits": [{"title": "Keep me", "item_ids": [ids.coat], "reason": "."},
+                                {"title": "Too loud", "item_ids": [ids.shirt], "reason": "."}]}
+    _ask(client)
+    keep, loud = _suggestions()
+    hx = {"HX-Request": "true"}
+    r = client.post(f"/suggestions/{loud.id}/verdict", data={"verdict": "dislike"}, headers=hx)
+    assert "Removed:" in r.text and "Too loud" in r.text and "What didn" in r.text and "Undo" in r.text
+    page = client.get("/stylist").text
+    assert "Keep me" in page and "Too loud" not in page
+
+    r = client.post(f"/suggestions/{loud.id}/verdict", data={"verdict": "dislike", "note": "too red"}, headers=hx)
+    assert "keep that in mind" in r.text and "What didn" not in r.text
+    assert _suggestions()[1].note == "too red"
+
+    r = client.post(f"/suggestions/{loud.id}/verdict", data={"verdict": ""}, headers=hx)  # undo
+    assert "Save as outfit" in r.text and "Removed:" not in r.text
+    assert "Too loud" in client.get("/stylist").text and _suggestions()[1].note == ""
+
+    # a like keeps the card in place
+    r = client.post(f"/suggestions/{keep.id}/verdict", data={"verdict": "like"}, headers=hx)
+    assert "Save as outfit" in r.text

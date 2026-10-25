@@ -1,0 +1,26 @@
+{# A suggestion `s` the user just disliked on the Stylist page: the card is gone, leaving room for an
+   optional reason and an undo. Disliked suggestions aren't listed after a reload. #}
+<li class="card suggestion dismissed" id="suggestion-{{ s.id }}">
+  <div class="card-body stack-tight">
+    <div class="dismissed-head">
+      <p class="small"><strong>Removed:</strong> {{ s.title }}</p>
+      <form method="post" action="/suggestions/{{ s.id }}/verdict" hx-post="/suggestions/{{ s.id }}/verdict"
+            hx-target="closest .suggestion" hx-swap="outerHTML" class="inline-mini">
+        <input type="hidden" name="where" value="stylist">
+        <button type="submit" name="verdict" value="" class="ghost undo">Undo</button>
+      </form>
+    </div>
+    {% if s.note %}
+    <p class="muted small" role="status">Thanks, the stylist will keep that in mind.</p>
+    {% else %}
+    <form method="post" action="/suggestions/{{ s.id }}/verdict" hx-post="/suggestions/{{ s.id }}/verdict"
+          hx-target="closest .suggestion" hx-swap="outerHTML" class="verdict-note">
+      <input type="hidden" name="where" value="stylist">
+      <input type="hidden" name="verdict" value="dislike">
+      <input type="text" name="note" maxlength="300" aria-label="What didn’t work? (optional)"
+             placeholder="What didn’t work? (optional)">
+      <button type="submit" class="ghost">Tell the stylist</button>
+    </form>
+    {% endif %}
+  </div>
+</li>

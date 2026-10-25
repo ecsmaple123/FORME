@@ -82,6 +82,8 @@ def verdict(request: Request, suggestion_id: int, verdict: str = Form(""), note:
     if where == "picks":
         from .home import render_ai_picks  # home imports this module
         return render_ai_picks(request, session, s)
+    if s.verdict == "dislike":  # the card goes away; room for a reason and an undo
+        return templates.TemplateResponse(request, "_dismissed.html", {"s": s})
     return templates.TemplateResponse(request, "_suggestion.html", {"sug": view(session, s)})
 
 

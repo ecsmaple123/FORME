@@ -47,6 +47,7 @@ def _page(request: Request, session: Session, *, error: str = "", asked: str = "
         "available": stylist.available(), "model": ai.model(), "error": error, "asked": asked,
         "suggestions": [view(session, s) for s in stylist.recent(session)],
         "counts": stylist.counts(session), "has_place": prefs.get().has_place,
+        "notes": stylist.notes(session),
     }, status_code=status_code)
 
 
@@ -97,6 +98,25 @@ def save_as_outfit(suggestion_id: int, session: Session = Depends(get_session)):
     session.add(s)
     session.commit()
     return RedirectResponse(f"/outfits/{outfit.id}?saved=1", status_code=303)
+
+
+def _notes(request: Request, session: Session):
+    if not request.headers.get("HX-Request"):
+        return RedirectResponse("/stylist#notes", status_code=303)
+    return templates.TemplateResponse(request, "_stylist_notes.html", {
+        "notes": stylist.notes(session), "keep_open": True})
+
+
+@router.post("/stylist/notes")
+def add_note(request: Request, text: str = Form(""), session: Session = Depends(get_session)):
+    stylist.add_note(session, text)
+    return _notes(request, session)
+
+
+@router.post("/stylist/notes/{note_id}/delete")
+def delete_note(request: Request, note_id: int, session: Session = Depends(get_session)):
+    stylist.delete_note(session, note_id)
+    return _notes(request, session)
 
 
 @router.post("/settings/stylist")

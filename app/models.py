@@ -190,3 +190,12 @@ class Suggestion(SQLModel, table=True):
     def ids(self) -> List[int]:
         return [int(x) for x in self.item_ids.split(",") if x.strip().isdigit()]
 
+
+class StylistNote(SQLModel, table=True):
+    """Something the user told the stylist directly ("no shorts", "more earth tones"); part of its
+    memory until the user deletes it."""
+    __tablename__ = "stylist_note"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+    text: str = Field(default="", max_length=300)
+

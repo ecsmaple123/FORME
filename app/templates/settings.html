@@ -92,7 +92,7 @@
       </div>
       <div><button class="primary" type="submit">Save</button></div>
     </form>
-    <p class="muted small">What Gemini gets: your clothes' details, the weather, what you ask for, your likes, dislikes and notes, and (if on) the cutout photos. Never your name, location or fit pictures. On Google's free tier this may be used to improve their products and read by reviewers.</p>
+    <p class="muted small">What Gemini gets: your clothes' details, the weather, what you ask for, your likes, dislikes and notes, what you told it on the Stylist page, and (if on) the cutout photos. Never your name, location or fit pictures. On Google's free tier this may be used to improve their products and read by reviewers.</p>
     <form method="post" action="/stylist/forget" class="actions"
           onsubmit="return confirm('Forget all {{ taste.like + taste.dislike }} likes and dislikes? The stylist starts learning your taste again.')">
       <span class="muted small">Remembered: {{ taste.like }} liked, {{ taste.dislike }} disliked.</span>

@@ -110,6 +110,11 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   after backup `wardrobe-20261025-164218`. Key added to the Pi's `.env` the same day (chmod 600,
   git-ignored). `gemini-3.8-flash` hung (0 bytes after 45 s) for this key, so the default became
   `gemini-3.5-flash` (~3 s); `gemini-3.5-flash-lite` (~1 s) is the fallback.
+- **2026-10-25: Tell your stylist** (user: "somewhere on the stylist page for me to give direct feedback
+  to the ai for it to remember"). Fold-out under the ask form on /stylist (open while empty or right
+  after an edit, folded with a count otherwise): add a note, delete one. Table `stylist_note`
+  (migration 0009); the newest 50 go into every prompt, newest first, and the rules say newer notes win.
+  "Forget my likes and dislikes" leaves them alone. 103 tests. Live after backup `wardrobe-20261025-175927`.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -295,8 +300,8 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   `GEMINI_API_KEY` in `.env` (chmod 600, git-ignored, not in backups); model default
   `gemini-3.5-flash` (config.DEFAULT_GEMINI_MODEL; `gemini-3.5-flash-lite` is the lighter option).
   Errors → `AIError` with a user message (429 = free limit; RPD resets at midnight Pacific).
-- `app/services/stylist.py`: prompt = SYSTEM rules + task + weather line + "My style" + memory (last 30
-  liked and 30 disliked suggestions with notes, 20 latest *manual* outfits) + closet lines
+- `app/services/stylist.py`: prompt = SYSTEM rules + task + weather line + "My style" + memory (the
+  user's direct notes from `stylist_note`, newest 50; last 30 liked and 30 disliked suggestions with notes, 20 latest *manual* outfits) + closet lines
   (`#id name | category / sub | colour | fabric | brand | seasons | tags | notes`) + cutout thumbs of
   item photos (≤60 items; `stylist_photos` pref). Never sent: name, location/coordinates, fit
   pictures, photos with background. Answers are validated: unknown/duplicate ids dropped, empty outfits
@@ -309,7 +314,8 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   `#stylist-error` out of band), `POST /suggestions/{id}/verdict` (where=stylist|picks; clicking the
   chosen button again clears it), `POST /suggestions/{id}/save` (auto layout, outfit source "ai",
   which is *not* fed back as the user's own taste), `/studio?suggestion=id`, `POST /settings/stylist`,
-  `POST /stylist/forget`. `outfits.auto_board` lays items out in two columns.
+  `POST /stylist/forget`, `POST /stylist/notes`, `POST /stylist/notes/{id}/delete` (htmx swaps
+  `#notes`, template `_stylist_notes.html`). `outfits.auto_board` lays items out in two columns.
 - Tests use a fake Gemini (MockTransport on `ai._client`); conftest blanks GEMINI_API_KEY so no test
   can reach the real API even if `.env` has a key.
 

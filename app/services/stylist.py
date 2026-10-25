@@ -1,7 +1,8 @@
 """The AI stylist: outfits from the user's own closet for the weather and an occasion.
 
 Its memory is the database: every suggestion it made, the user's like/dislike and note on it, the
-outfits the user saved themselves, and the "My style" text from Settings. All of that goes into
+notes the user told it directly (Stylist page), the outfits the user saved themselves, and the
+"My style" text from Settings. All of that goes into
 each request, so the model needs no state of its own.
 
 What is sent to Gemini (free tier: Google may use it): the closet's item details, the weather, the
@@ -17,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from ..config import get_settings
-from ..models import Item, Outfit, Suggestion, VERDICTS
+from ..models import Item, Outfit, StylistNote, Suggestion, VERDICTS
 from . import ai, images, prefs
 from .ai import AIError, AIUnavailable  # noqa: F401  (re-exported for the routes)
 
@@ -27,6 +28,7 @@ STYLIST_COUNT = 3   # outfits per request on the Stylist page
 MAX_PHOTOS = 60     # beyond this many items the stylist gets text only
 MEMORY = 30         # most recent likes and dislikes each
 SAVED_OUTFITS = 20
+MAX_NOTES = 50      # notes the user told the stylist directly
 
 SYSTEM = """You are the personal stylist inside FORME, a wardrobe app. You dress one person using \
 only the clothes in their closet, which is listed below by id.
@@ -37,8 +39,9 @@ Rules:
 a layer when the weather calls for it. Never combine items that can't be worn together, such as \
 two pairs of shoes or two pairs of trousers.
 - Dress for the weather (temperature, rain, wind) and the occasion.
-- Learn their taste: follow their own style description, lean towards outfits and items they \
-liked, avoid what they disliked, and respect their notes. Outfits they saved themselves are ones \
+- Learn their taste: follow their own style description and what they told you directly (newer \
+notes win over older ones), lean towards outfits and items they liked, avoid what they disliked, \
+and respect their notes. Outfits they saved themselves are ones \
 they like.
 - If the closet lacks something an outfit needs, give the best outfit possible and say in the \
 reason what would complete it.
@@ -126,6 +129,10 @@ def _names(ids: List[int], by_id: Dict[int, Item]) -> str:
 
 def _memory(session: Session, by_id: Dict[int, Item]) -> List[str]:
     lines = []
+    told = notes(session)
+    if told:
+        lines.append("What they told you directly (newest first; follow these):\n"
+                     + "\n".join(f'- "{n.text}"' for n in told))
     for verdict, heading in (("like", "Outfits they LIKED"), ("dislike", "Outfits they DISLIKED")):
         rows = session.exec(select(Suggestion).where(Suggestion.verdict == verdict)
                             .order_by(Suggestion.created_at.desc()).limit(MEMORY)).all()
@@ -258,6 +265,30 @@ def forget(session: Session) -> int:
         session.add(s)
     session.commit()
     return len(rows)
+
+
+def notes(session: Session) -> List[StylistNote]:
+    return list(session.exec(select(StylistNote).order_by(StylistNote.id.desc())
+                             .limit(MAX_NOTES)).all())
+
+
+def add_note(session: Session, text: str) -> Optional[StylistNote]:
+    """Store a note (whitespace tidied, at most 300 characters); None if it was empty."""
+    text = " ".join((text or "").split())[:300]
+    if not text:
+        return None
+    note = StylistNote(text=text)
+    session.add(note)
+    session.commit()
+    session.refresh(note)
+    return note
+
+
+def delete_note(session: Session, note_id: int) -> None:
+    note = session.get(StylistNote, note_id)
+    if note is not None:
+        session.delete(note)
+        session.commit()
 
 
 def counts(session: Session) -> Dict[str, int]:

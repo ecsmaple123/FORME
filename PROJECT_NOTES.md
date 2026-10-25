@@ -42,8 +42,9 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   unpacked into `.segtest/`; 59 tests pass. Went live the same night after the user ran A2: all 10
   existing photos done (~12 s each), pre-rollout backup `backups/wardrobe-20261025-014734.tar.gz`.
   The user checked the result: "everything looks good".
-- **Open:** URL import has only been tested against
-  fixtures and non-store sites so far; the user should try real stores and send pages that fail.
+- **2026-10-25: Bookmark confirmed on real stores** (user: "the bookmark works fine"). No open items;
+  if a store page ever fails, the user will send it. Server-side URL import still only tested on
+  fixtures and non-store sites (stores like Loro Piana block the Pi; the bookmark covers them).
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.

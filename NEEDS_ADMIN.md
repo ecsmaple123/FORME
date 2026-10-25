@@ -3,9 +3,9 @@
 Claude has run none of these. Review each one, then run it as `pi`.
 The project does **not** need the docker group.
 
-## Before Stage 2: please run
+## Done
 
-**A1. Install `libopenjp2-7`** (OpenJPEG runtime library):
+**A1. Install `libopenjp2-7`** (OpenJPEG runtime library): installed by you on 2026-10-24 (2.4.0-3+deb11u3).
 ```sh
 sudo apt-get install --no-install-recommends libopenjp2-7
 ```

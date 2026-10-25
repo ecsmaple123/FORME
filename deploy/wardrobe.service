@@ -1,0 +1,19 @@
+# systemd *user* unit, installed by ./wardrobe.sh start (@DIR@ is replaced with the project path).
+[Unit]
+Description=Wardrobe tracker (FastAPI on 192.168.0.129:8484)
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=@DIR@
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 MALLOC_ARENA_MAX=2 TMPDIR=@DIR@/data/tmp
+ExecStartPre=@DIR@/.venv/bin/python -m app migrate
+ExecStart=@DIR@/.venv/bin/python -m app serve
+Restart=on-failure
+RestartSec=10
+# No memory cgroup on this Pi, so cap the address space with an rlimit instead.
+LimitAS=@LIMIT_AS@
+Nice=5
+
+[Install]
+WantedBy=default.target

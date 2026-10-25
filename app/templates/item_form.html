@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if item else "New item" }} · Wardrobe{% endblock %}
+{% block content %}
+<h1>{{ "Edit " ~ item.name if item else "New item" }}</h1>
+{% if errors %}<div class="error" role="alert">Please fix the highlighted fields.</div>{% endif %}
+<div class="form-layout">
+  <div class="form-image">
+    {% if item %}<img src="{{ media_url(item, 'display') }}" alt="">
+    {% elif staged %}<img src="{{ staged_url(staged) }}" alt="">
+      {% if staged.colors %}
+      <div class="swatches" aria-label="Colors found">
+        {% for c in staged.colors %}
+        <button type="button" class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"
+          onclick="document.getElementById('color_hex').value='{{ c.hex }}';document.getElementById('color_pick').value='{{ c.hex }}';document.getElementById('color_name').value='';"></button>
+        {% endfor %}
+      </div>
+      <p class="muted small">Click a swatch to use it as the primary color.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <form method="post" action="{{ '/items/%d/edit'|format(item.id) if item else '/items' }}" class="item-form">
+    {% if staged %}<input type="hidden" name="image_token" value="{{ staged.token }}">{% endif %}
+
+    <label class="{{ 'invalid' if errors.name }}">Name
+      <input name="name" value="{{ data.name }}" required maxlength="200" autofocus>
+      {% if errors.name %}<span class="hint">{{ errors.name }}</span>{% endif %}
+    </label>
+
+    <div class="row">
+      <label class="{{ 'invalid' if errors.category_id }}">Category
+        <select name="category_id" id="category_id" required>
+          <option value="">Choose…</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if data.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.category_id %}<span class="hint">{{ errors.category_id }}</span>{% endif %}
+      </label>
+      <label>Subcategory
+        <input name="subcategory" value="{{ data.subcategory }}" list="subcats" maxlength="80" placeholder="e.g. T-shirt">
+        <datalist id="subcats">
+          {% for subs in subcats.values() %}{% for s in subs %}<option value="{{ s }}">{% endfor %}{% endfor %}
+        </datalist>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="{{ 'invalid' if errors.color_hex }}">Primary color
+        <span class="color-input">
+          <input type="color" id="color_pick" value="{{ data.color_hex or '#888888' }}"
+                 oninput="document.getElementById('color_hex').value=this.value;document.getElementById('color_name').value='';">
+          <input id="color_hex" name="color_hex" value="{{ data.color_hex }}" placeholder="#1d2645" maxlength="7">
+        </span>
+        {% if errors.color_hex %}<span class="hint">{{ errors.color_hex }}</span>{% endif %}
+      </label>
+      <label>Color name
+        <input id="color_name" name="color_name" value="{{ data.color_name }}" maxlength="40" placeholder="filled in automatically">
+      </label>
+    </div>
+
+    <div class="row">
+      <label>Brand <input name="brand" value="{{ data.brand }}" maxlength="100"></label>
+      <label>Size <input name="size" value="{{ data.size }}" maxlength="40"></label>
+    </div>
+
+    <fieldset class="seasons">
+      <legend>Seasons</legend>
+      {% for s in SEASONS %}
+      <label class="check"><input type="checkbox" name="seasons" value="{{ s }}"
+        {% if s in data.seasons %}checked{% endif %}> {{ s|capitalize }}</label>
+      {% endfor %}
+    </fieldset>
+
+    <label>Tags <input name="tags" value="{{ data.tags_text }}" placeholder="work, linen, favourite">
+      <span class="hint muted">Separate with commas.</span></label>
+
+    <label>Notes <textarea name="notes" rows="3" maxlength="4000">{{ data.notes }}</textarea></label>
+
+    <label class="{{ 'invalid' if errors.source_url }}">Source URL
+      <input name="source_url" value="{{ data.source_url }}" maxlength="2000">
+      {% if errors.source_url %}<span class="hint">{{ errors.source_url }}</span>{% endif %}
+    </label>
+
+    <div class="actions">
+      <button class="primary" type="submit">{{ "Save changes" if item else "Add to wardrobe" }}</button>
+      <a class="button" href="{{ '/items/%d'|format(item.id) if item else '/add' }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -5,3 +5,5 @@ __pycache__/
 data/
 backups/
 .env
+data.before-restore-*/
+data.restoring/

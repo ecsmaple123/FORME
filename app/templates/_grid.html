@@ -1,0 +1,24 @@
+{% if items %}
+<p class="muted count">{{ items|length }} item{{ "" if items|length == 1 else "s" }}</p>
+<ul class="grid">
+  {% for item in items %}
+  <li class="card">
+    <a href="/items/{{ item.id }}">
+      <div class="thumb"><img src="{{ media_url(item) }}" alt="" loading="lazy"></div>
+      <div class="card-body">
+        <div class="card-title">
+          {% if item.color_hex %}<span class="dot" style="background: {{ item.color_hex }}"
+            title="{{ item.color_name }}"></span>{% endif %}
+          {{ item.name }}
+        </div>
+        <div class="muted">{{ item.brand or item.category.name }}{% if item.brand %} · {{ item.category.name }}{% endif %}</div>
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% elif q or category_id %}
+<p class="empty">Nothing matches. <a href="/">Clear filters</a></p>
+{% else %}
+<p class="empty">Your wardrobe is empty. <a href="/add">Add the first item</a>.</p>
+{% endif %}

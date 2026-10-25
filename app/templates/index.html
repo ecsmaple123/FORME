@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<form id="filters" class="filters" method="get" action="/"
+      hx-get="/" hx-target="#grid" hx-push-url="true"
+      hx-trigger="input changed delay:300ms from:#q, search from:#q, change">
+  <div class="chips" role="radiogroup" aria-label="Category">
+    <label class="chip"><input type="radio" name="category" value=""
+      {% if not category_id %}checked{% endif %}><span>All</span></label>
+    {% for c in categories %}
+    <label class="chip"><input type="radio" name="category" value="{{ c.id }}"
+      {% if category_id == c.id %}checked{% endif %}><span>{{ c.name }}
+      <small>{{ counts.get(c.id, 0) }}</small></span></label>
+    {% endfor %}
+  </div>
+  <div class="searchrow">
+    <input id="q" type="search" name="q" value="{{ q }}" placeholder="Search name, brand or tag"
+           autocomplete="off">
+    <select name="sort" aria-label="Sort">
+      {% for key, label in SORTS.items() %}
+      <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">Filter</button></noscript>
+  </div>
+</form>
+{% if request.query_params.get("deleted") %}<p class="flash">Item deleted.</p>{% endif %}
+<div id="grid">{% include "_grid.html" %}</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ item.name }} · Wardrobe{% endblock %}
+{% block content %}
+<div class="panel confirm">
+  <img src="{{ media_url(item) }}" alt="">
+  <div>
+    <h1>Delete “{{ item.name }}”?</h1>
+    <p>This removes the item and its photos from the Pi. Backups made earlier still contain it.</p>
+    <form method="post" action="/items/{{ item.id }}/delete" class="actions">
+      <button class="danger" type="submit">Yes, delete it</button>
+      <a class="button" href="/items/{{ item.id }}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

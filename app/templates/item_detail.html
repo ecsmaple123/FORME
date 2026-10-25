@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }} · Wardrobe{% endblock %}
+{% block content %}
+<p><a href="/">← Back</a></p>
+<div class="detail">
+  <a href="{{ media_url(item, 'orig') }}" class="detail-img" title="Open the original">
+    <img src="{{ media_url(item, 'display') }}" alt="{{ item.name }}">
+  </a>
+  <div>
+    <h1>{{ item.name }}</h1>
+    <dl class="facts">
+      <dt>Category</dt><dd>{{ item.category.name }}{% if item.subcategory %} · {{ item.subcategory }}{% endif %}</dd>
+      {% if item.color_hex %}<dt>Color</dt><dd><span class="dot" style="background: {{ item.color_hex }}"></span>
+        {{ item.color_name }} <span class="muted">{{ item.color_hex }}</span></dd>{% endif %}
+      {% if item.brand %}<dt>Brand</dt><dd>{{ item.brand }}</dd>{% endif %}
+      {% if item.size %}<dt>Size</dt><dd>{{ item.size }}</dd>{% endif %}
+      {% if item.season_list %}<dt>Seasons</dt><dd>{{ item.season_list|map('capitalize')|join(', ') }}</dd>{% endif %}
+      {% if item.tags %}<dt>Tags</dt><dd>{% for t in item.tags %}<a class="tag" href="/?q={{ t.name|urlencode }}">{{ t.name }}</a>{% endfor %}</dd>{% endif %}
+      {% if item.source_url %}<dt>Source</dt><dd><a href="{{ item.source_url }}" rel="noreferrer noopener" target="_blank">{{ item.source_url|truncate(60) }}</a></dd>{% endif %}
+      <dt>Added</dt><dd>{{ item.created_at|date }}</dd>
+    </dl>
+    {% if item.notes %}<p class="notes">{{ item.notes }}</p>{% endif %}
+    {% if item.colors %}
+    <div class="swatches" title="Colors found in the photo">
+      {% for c in item.colors %}<span class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"></span>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="actions">
+      <a class="button primary" href="/items/{{ item.id }}/edit">Edit</a>
+      <a class="button danger" href="/items/{{ item.id }}/delete">Delete…</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

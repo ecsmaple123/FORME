@@ -1,7 +1,7 @@
 # wardrobe: plan (Stage 1, 2026-10-24)
 
-A small wardrobe tracker on the Pi, on the LAN only. Status: **waiting for your approval**.
-Nothing has been installed or started yet.
+A small wardrobe tracker on the Pi, on the LAN only. Status: **approved 2026-10-24 and built.**
+This is the plan as approved; where the build differs, see PROJECT_NOTES.md → "Deviations from PLAN.md".
 
 ## 1. Runtime: venv + systemd user service, no Docker (I agree with your recommendation)
 

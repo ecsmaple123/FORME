@@ -81,6 +81,33 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
     assert r.headers.get("HX-Refresh") == "true"
 
 
+def test_item_color_follows_cover_until_edited(client):
+    from app.services.colors import nearest_color_name
+
+    r = client.post("/add/photo", files=[("photo", ("p.jpg", make_image(garment=c), "image/jpeg"))
+                                         for c in (NAVY, RED)])
+    assert "swatch" not in r.text
+    tokens = re.findall(r'name="image_token" value="([0-9a-f]{32})"', r.text)
+    prefilled = {k: re.search(rf'name="{k}" value="([^"]*)"', r.text).group(1)
+                 for k in ("color_hex", "color_name")}
+    r = client.post("/items", data={"image_token": tokens, "photo_kind": ["product"] * 2,
+                                    "name": "Coat", "category_id": "1", **prefilled},
+                    follow_redirects=False)
+    item_id = int(r.headers["location"].rsplit("/", 1)[1])
+    _batch()
+    photos, item = _photos(item_id)
+    assert item.color_hex == item.colors[0].hex and item.color_name == "navy"  # from the cutout
+    assert "swatch" not in client.get(f"/items/{item_id}").text
+    client.post(f"/items/{item_id}/photos/{photos[1].id}/cover")
+    assert nearest_color_name(_photos(item_id)[1].color_hex) == "red"  # still automatic
+
+    client.post(f"/items/{item_id}/edit", data={"name": "Coat", "category_id": "1",
+                                                 "color_hex": "#00aa00", "color_name": ""})
+    client.post(f"/items/{item_id}/photos/{photos[0].id}/cover")
+    _, item = _photos(item_id)
+    assert item.color_hex == "#00aa00" and nearest_color_name(item.colors[0].hex) == "navy"
+
+
 def test_fit_picture_keeps_background(client, settings):
     item_id = _create(client, kind="fit")
     (photo,), _ = _photos(item_id)

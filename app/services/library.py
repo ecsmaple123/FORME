@@ -380,13 +380,23 @@ def _renumber(ordered: List[ItemPhoto]) -> None:
 
 
 def _recolor(session: Session, item: Item) -> None:
-    """Item colors always come from the cover photo (its cutout, when that is shown)."""
+    """Item colors always come from the cover photo (its cutout, when there is one).
+
+    The item's color field follows the new main color while it still holds the detected one
+    (hex and name as filled in automatically), or is empty; a color the user edited stays.
+    """
+    old = item.colors[0].hex if item.colors else ""
+    auto = not item.color_hex or (item.color_hex == old
+                                  and item.color_name == colors.nearest_color_name(old))
     item.colors = []
     session.flush()
     cover = item.cover
     if cover:
         item.colors = _color_rows(images.colors_of(get_settings().images_dir, cover.image_file,
                                                    cover.cutout_shown))
+    if auto and item.colors:
+        item.color_hex = item.colors[0].hex
+        item.color_name = colors.nearest_color_name(item.color_hex)
 
 
 def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:

@@ -84,6 +84,12 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   item page's "+ Add photos". No HTTPS needed (getUserMedia would need it; a file input doesn't). iOS
   converts HEIC to JPEG because the accept list has no HEIC. 83 tests. Live after backup
   `wardrobe-20261025-135238`. Not yet tried on the user's phone.
+- **2026-10-25: Color swatches removed** (user: "Remove the color swatch boxes, only keep the color field
+  and one color either auto detected or user edited"). No swatches on the item page or the form; the form
+  has one Color field (picker + hex + name). The auto color now follows the cover's cutout (`_recolor`,
+  see Photos) until the user edits it. Existing items were left as they are (most names were already
+  edited by the user, and the rest differ from the cutout color by a few RGB steps). 84 tests. Live after
+  backup `wardrobe-20261025-143057`.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -113,10 +119,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   bar again (the old bookmark keeps the old code).
 
 ## Photos (multiple per item)
-- Table `item_photo` (position 0 = cover, kind ∈ product|real|detail|other, image_file/ext/sha256/
+- Table `item_photo` (position 0 = cover, kind ∈ product|fit since 0006, image_file/ext/sha256/
   width/height, cutout_file). The image columns were removed from `item` in migration 0002.
 - Item colors (`item_color`) always come from the cover. "Make cover" and deleting the cover
-  recalculate them from the thumbnail. The primary color field the user edits is left alone.
+  recalculate them from the thumbnail. They aren't shown (kept for color sorting later); the UI shows
+  only the item's one color (`color_hex` + `color_name`). `_recolor` moves that to the new main color
+  while it's still the auto-detected one (hex == old `item_color` rank 0 and name == its
+  `nearest_color_name`) or empty; a color the user edited stays.
 - Limits: 12 photos per item, 6 per request, 20 MB per file, 60 MB per request (spooled to disk).
 - Migrations run on their own SQLite connection with foreign keys **off** (`migrations/env.py`), because
   batch table rebuilds would otherwise cascade-delete child rows. A `PRAGMA foreign_key_check` runs after.

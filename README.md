@@ -34,8 +34,8 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   uploads as soon as you take it; on a computer it's a file picker. Works over plain http on the LAN.
 - **Upload photos:** JPEG up to 40 MP; PNG/GIF up to 8.5 MP; WebP up to 6 MP; 20 MB max file size.
   For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
-- The primary color is pre-filled from the photo (white backgrounds are ignored). Click a swatch or
-  use the picker to change it.
+- **Color:** one color per item, detected from the cover photo (from its cutout once the background is
+  removed) and kept up to date until you change it with the picker, the hex code or the name.
 - **Home:** a greeting, today's weather (once a location is set) with a what-to-wear hint, four
   featured picks (random for now, the same all day; **Shuffle** for new ones) and recently added items.
 - **Settings** (gear icon): categories, your name for the greeting, **Appearance** (System / Light / Dark),

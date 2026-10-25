@@ -83,11 +83,6 @@
       <dt>Added</dt><dd>{{ item.created_at|date }}</dd>
     </dl>
     {% if item.notes %}<p class="notes">{{ item.notes }}</p>{% endif %}
-    {% if item.colors %}
-    <div class="swatches" title="Colors found in the cover photo">
-      {% for c in item.colors %}<span class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"></span>{% endfor %}
-    </div>
-    {% endif %}
     <div class="actions">
       <a class="button primary" href="/items/{{ item.id }}/edit">Edit</a>
       <a class="button danger" href="/items/{{ item.id }}/delete">Delete…</a>

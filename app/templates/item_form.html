@@ -12,15 +12,6 @@
     {% elif staged %}
       {% set first = staged[0][0] %}
       <img src="{{ staged_url(first) }}" alt="">
-      {% if first.colors %}
-      <div class="swatches" aria-label="Colors found">
-        {% for c in first.colors %}
-        <button type="button" class="swatch" style="background: {{ c.hex }}" title="{{ c.hex }} ({{ (c.share * 100)|round|int }}%)"
-          onclick="document.getElementById('color_hex').value='{{ c.hex }}';document.getElementById('color_pick').value='{{ c.hex }}';document.getElementById('color_name').value='';"></button>
-        {% endfor %}
-      </div>
-      <p class="muted small">Click a swatch to use it as the primary color.</p>
-      {% endif %}
       <ul class="staged">
         {% for s, kind in staged %}
         <li>
@@ -69,18 +60,18 @@
       </label>
     </div>
 
-    <div class="row">
-      <label class="{{ 'invalid' if errors.color_hex }}">Primary color
-        <span class="color-input">
-          <input type="color" id="color_pick" value="{{ data.color_hex or '#888888' }}"
-                 oninput="document.getElementById('color_hex').value=this.value;document.getElementById('color_name').value='';">
-          <input id="color_hex" name="color_hex" value="{{ data.color_hex }}" placeholder="#1d2645" maxlength="7">
-        </span>
-        {% if errors.color_hex %}<span class="hint">{{ errors.color_hex }}</span>{% endif %}
-      </label>
-      <label>Color name
-        <input id="color_name" name="color_name" value="{{ data.color_name }}" maxlength="40" placeholder="filled in automatically">
-      </label>
+    <div class="{{ 'invalid' if errors.color_hex }}">
+      <span class="field-label" id="color_label">Color</span>
+      <span class="color-input" role="group" aria-labelledby="color_label">
+        <input type="color" id="color_pick" value="{{ data.color_hex or '#888888' }}" aria-label="Pick a color"
+               oninput="document.getElementById('color_hex').value=this.value;document.getElementById('color_name').value='';">
+        <input id="color_hex" name="color_hex" value="{{ data.color_hex }}" placeholder="#1d2645" maxlength="7"
+               class="color-hex" aria-label="Hex code">
+        <input id="color_name" name="color_name" value="{{ data.color_name }}" maxlength="40"
+               placeholder="name (filled in automatically)" aria-label="Color name">
+      </span>
+      {% if errors.color_hex %}<span class="hint">{{ errors.color_hex }}</span>{% endif %}
+      <p class="muted small">Detected from the cover photo (without its background) until you change it.</p>
     </div>
 
     <div class="row three">

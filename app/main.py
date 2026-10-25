@@ -1,3 +1,4 @@
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from .services.library import cleanup_staging
 
 APP_DIR = Path(__file__).parent
 THREADS = 8  # sync routes run in this pool; small to keep 32-bit address space low
+mimetypes.add_type("image/webp", ".webp")  # Python 3.9's table lacks it (served as text/plain)
 
 
 class UploadLimit:

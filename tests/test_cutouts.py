@@ -240,3 +240,11 @@ def test_real_model_cuts_out_garment():
     raw = seg.predict(np.asarray(rgb))
     row = raw[375]
     assert row[130] < 0.2 and row[170] > 0.8, (row[130], row[170])
+
+
+def test_webp_served_as_image(client):
+    item_id = _create(client)
+    _batch()
+    (photo,), _ = _photos(item_id)
+    r = client.get(f"/media/cutout/{photo.cutout_file}.thumb.webp")
+    assert r.headers["content-type"] == "image/webp"

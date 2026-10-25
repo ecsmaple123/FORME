@@ -18,6 +18,10 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   `wardrobe-backup.timer` at 04:45 (+ up to 10 min random, Persistent=true), running at Nice 15 with
   idle I/O, same pattern as matrix-hub's 04:15 timer, 30 min later so the two never overlap. A test run
   through the service succeeded (`backups/wardrobe-20261024-214327.tar.gz`, checksum OK).
+- **2026-10-24: Loro Piana (ca.loropiana.com) returns HTTP 403** to the Pi. The app showed the fallback
+  as designed. Trying browser-imitating headers to get past their bot protection was refused (bot-check
+  circumvention), so that stays off the table. Proposed instead: an "Add to wardrobe" browser bookmark that reads
+  image/name/brand from the page in the user's own browser. Waiting for the user's decision.
 - **Open:** URL import has only been tested against
   fixtures and non-store sites so far; the user should try real stores and send pages that fail.
 

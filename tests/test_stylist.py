@@ -103,7 +103,7 @@ def test_suggest_sends_closet_and_keeps_private_things_out(client, gemini):
     r = _ask(client, "dinner with friends")
     assert r.status_code == 200 and r.text.count('class="card suggestion fresh"') == 2
     call = gemini.calls[0]
-    assert call.key == "test-key" and "/models/gemini-3.8-flash:generateContent" in call.url
+    assert call.key == "test-key" and "/models/gemini-3.5-flash:generateContent" in call.url
     assert call.body["generationConfig"]["responseMimeType"] == "application/json"
     assert "outfits" in call.body["generationConfig"]["responseSchema"]["properties"]
     assert "only the clothes in their closet" in call.body["systemInstruction"]["parts"][0]["text"]

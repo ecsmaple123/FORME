@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"  # free tier; GEMINI_MODEL in .env picks another
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"  # free tier; GEMINI_MODEL in .env picks another
 
 
 def _read_env_file(path: Path) -> dict:

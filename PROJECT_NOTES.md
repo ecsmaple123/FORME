@@ -107,8 +107,9 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   tab (5th tab; Studio's icon is now "layers"), AI Today's picks, likes/dislikes with notes, My style +
   photo switch + forget in Settings. 101 tests; checked in headless Edge (likes/notes swap in place,
   phone/desktop, light/dark) on a preview with seeded suggestions and a dummy key. Migration 0008 ran live
-  after backup `wardrobe-20261025-164218`. **Open:** no API key yet (live shows the setup page); after
-  the user adds one, try a real request and check the answers.
+  after backup `wardrobe-20261025-164218`. Key added to the Pi's `.env` the same day (chmod 600,
+  git-ignored). `gemini-3.8-flash` hung (0 bytes after 45 s) for this key, so the default became
+  `gemini-3.5-flash` (~3 s); `gemini-3.5-flash-lite` (~1 s) is the fallback.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -292,7 +293,7 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   that calls it: httpx POST to `v1beta/models/{GEMINI_MODEL}:generateContent` with header
   `x-goog-api-key`, JSON output via `responseMimeType` + `responseSchema` (uppercase types). Key
   `GEMINI_API_KEY` in `.env` (chmod 600, git-ignored, not in backups); model default
-  `gemini-3.8-flash` (config.DEFAULT_GEMINI_MODEL; `gemini-3.5-flash-lite` is the lighter option).
+  `gemini-3.5-flash` (config.DEFAULT_GEMINI_MODEL; `gemini-3.5-flash-lite` is the lighter option).
   Errors → `AIError` with a user message (429 = free limit; RPD resets at midnight Pacific).
 - `app/services/stylist.py`: prompt = SYSTEM rules + task + weather line + "My style" + memory (last 30
   liked and 30 disliked suggestions with notes, 20 latest *manual* outfits) + closet lines

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ item.name }} · FORME{% endblock %}
 {% block content %}
-<p><a href="/">← Back</a></p>
+<p><a href="/browse">← Back</a></p>
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 <div class="detail">
   <div class="gallery">
@@ -93,7 +93,7 @@
       {% if item.brand %}<dt>Brand</dt><dd>{{ item.brand }}</dd>{% endif %}
       {% if item.size %}<dt>Size</dt><dd>{{ item.size }}</dd>{% endif %}
       {% if item.season_list %}<dt>Seasons</dt><dd>{{ item.season_list|map('capitalize')|join(', ') }}</dd>{% endif %}
-      {% if item.tags %}<dt>Tags</dt><dd>{% for t in item.tags %}<a class="tag" href="/?q={{ t.name|urlencode }}">{{ t.name }}</a>{% endfor %}</dd>{% endif %}
+      {% if item.tags %}<dt>Tags</dt><dd>{% for t in item.tags %}<a class="tag" href="/browse?q={{ t.name|urlencode }}">{{ t.name }}</a>{% endfor %}</dd>{% endif %}
       {% if item.source_url %}<dt>Source</dt><dd><a href="{{ item.source_url }}" rel="noreferrer noopener" target="_blank">{{ item.source_url|truncate(60) }}</a></dd>{% endif %}
       <dt>Added</dt><dd>{{ item.created_at|date }}</dd>
     </dl>

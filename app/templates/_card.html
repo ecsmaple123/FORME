@@ -1,0 +1,17 @@
+{% macro card(item) -%}
+<li class="card">
+  <a href="/items/{{ item.id }}">
+    <div class="thumb"><img src="{{ media_url(item) }}" alt="" loading="lazy">
+      {% if item.photos|length > 1 %}<span class="count-badge" title="{{ item.photos|length }} photos">{{ item.photos|length }}</span>{% endif %}
+    </div>
+    <div class="card-body">
+      <div class="card-title">
+        {% if item.color_hex %}<span class="dot" style="background: {{ item.color_hex }}"
+          title="{{ item.color_name }}"></span>{% endif %}
+        {{ item.name }}
+      </div>
+      <div class="muted">{{ item.brand or item.category.name }}{% if item.brand %} · {{ item.category.name }}{% endif %}</div>
+    </div>
+  </a>
+</li>
+{%- endmacro %}

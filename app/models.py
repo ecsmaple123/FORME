@@ -119,6 +119,13 @@ class ItemColor(SQLModel, table=True):
     item: Optional[Item] = Relationship(back_populates="colors")
 
 
+class Setting(SQLModel, table=True):
+    """User preferences as key/value strings (see app/services/prefs.py for keys and defaults)."""
+    __tablename__ = "setting"
+    key: str = Field(primary_key=True, max_length=40)
+    value: str = Field(default="", max_length=500)
+
+
 class Outfit(SQLModel, table=True):
     """Not used by the MVP UI yet; here so outfits need no schema rework later."""
     __tablename__ = "outfit"

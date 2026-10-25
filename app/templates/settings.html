@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Settings · FORME{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+{% if saved %}<p class="flash">Saved.</p>{% endif %}
+
+<div class="settings">
+  <form method="post" action="/settings" class="panel stack">
+    <h2>You</h2>
+    <label>Your name <span class="muted small">(for the welcome message; optional)</span>
+      <input type="text" name="name" value="{{ p.name }}" maxlength="40" autocomplete="given-name">
+    </label>
+
+    <fieldset class="theme-pick">
+      <legend>Appearance</legend>
+      {% for key, label in THEMES.items() %}
+      <label class="theme-option">
+        <input type="radio" name="theme" value="{{ key }}" {% if p.theme == key %}checked{% endif %}
+               onchange="document.documentElement.dataset.theme = this.value">
+        <span class="theme-swatch theme-{{ key }}" aria-hidden="true"><span></span><span></span></span>
+        <span class="theme-label">{{ icon({"system": "system", "light": "sun", "dark": "moon"}[key]) }} {{ label }}</span>
+      </label>
+      {% endfor %}
+      <p class="muted small">System follows your device's light or dark setting.</p>
+    </fieldset>
+
+    <fieldset class="units">
+      <legend>Temperature</legend>
+      {% for key, label in UNITS.items() %}
+      <label class="check"><input type="radio" name="units" value="{{ key }}" {% if p.units == key %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+
+    <div><button class="primary" type="submit">Save</button></div>
+  </form>
+
+  <section class="panel stack" id="location">
+    <h2>Weather location</h2>
+    {% if p.has_place %}
+    <p class="current-place">{{ icon("pin") }} <strong>{{ p.place }}</strong></p>
+    {% else %}
+    <p class="muted">No location yet. The home page shows the weather once you pick one.</p>
+    {% endif %}
+    <form method="get" action="/settings#location" class="searchrow">
+      <input type="search" name="find" value="{{ find }}" placeholder="Town or city, e.g. Toronto" aria-label="Find a town or city">
+      <button type="submit">Search</button>
+    </form>
+    {% if places is not none %}
+      {% if places %}
+      <ul class="places">
+        {% for pl in places %}
+        <li>
+          <form method="post" action="/settings/location">
+            <input type="hidden" name="place" value="{{ pl.label }}">
+            <input type="hidden" name="latitude" value="{{ pl.latitude }}">
+            <input type="hidden" name="longitude" value="{{ pl.longitude }}">
+            <input type="hidden" name="timezone" value="{{ pl.timezone }}">
+            <button type="submit" class="place">{{ icon("pin") }} {{ pl.label }}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No places found for “{{ find }}”. Try another spelling or a nearby city.</p>
+      {% endif %}
+    {% endif %}
+    {% if p.has_place %}
+    <form method="post" action="/settings/location">
+      <input type="hidden" name="place" value="">
+      <button type="submit" class="ghost small-btn">Remove location</button>
+    </form>
+    {% endif %}
+    <p class="muted small">Weather comes from Open-Meteo (free, no account). Only the place's
+      coordinates are sent to it.</p>
+  </section>
+</div>
+{% endblock %}

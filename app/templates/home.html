@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_card.html" import card %}
+{% block content %}
+<section class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">{{ now.strftime("%A, %-d %B") }}</p>
+    <h1 class="greeting">{{ greeting }}{% if name %}, <span class="name">{{ name }}</span>{% endif %}.</h1>
+    {% if count %}
+    <p class="lede">{{ count }} piece{{ "" if count == 1 else "s" }} in your wardrobe.</p>
+    <div class="hero-actions">
+      <a class="button primary" href="/browse">Browse wardrobe {{ icon("arrow") }}</a>
+      <a class="button" href="/add">{{ icon("plus") }} Add item</a>
+    </div>
+    {% else %}
+    <p class="lede">Let's start your wardrobe: add a photo, a store link, or use the bookmark.</p>
+    <div class="hero-actions"><a class="button primary" href="/add">{{ icon("plus") }} Add your first item</a></div>
+    {% endif %}
+  </div>
+  {% if has_place %}
+  <div class="weather-card loading" hx-get="/weather" hx-trigger="load" hx-swap="outerHTML" aria-busy="true">
+    <div class="wx-skeleton"></div><p class="muted small">Loading the weather…</p>
+  </div>
+  {% else %}
+  {% include "_weather.html" %}
+  {% endif %}
+</section>
+
+{% if count %}
+<section class="section">
+  {% include "_picks.html" %}
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h2>Recently added</h2>
+    <a class="section-link" href="/browse">See all {{ icon("arrow") }}</a>
+  </div>
+  <ul class="grid rail">
+    {% for item in recent %}{{ card(item) }}{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

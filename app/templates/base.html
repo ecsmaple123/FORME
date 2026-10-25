@@ -1,8 +1,11 @@
 <!doctype html>
-<html lang="en">
+{% from "_icons.html" import icon %}
+{% set p = prefs() %}
+<html lang="en" data-theme="{{ p.theme }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="{{ 'light dark' if p.theme == 'system' else p.theme }}">
   <title>{% block title %}FORME{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
@@ -11,9 +14,10 @@
   <header class="topbar">
     <a class="brand" href="/">FORME</a>
     <nav>
-      <a href="/">Browse</a>
+      <a href="/browse">Browse</a>
       <a href="/categories">Categories</a>
-      <a class="button primary" href="/add">+ Add item</a>
+      <a href="/settings" class="icon-link" title="Settings">{{ icon("settings", label="Settings") }}</a>
+      <a class="button primary" href="/add">+ Add<span class="wide-only"> item</span></a>
     </nav>
   </header>
   <main>

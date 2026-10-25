@@ -43,7 +43,7 @@ def _detail(request: Request, item, photo=None, error: str = "", status_code: in
     }, status_code=status_code)
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/browse", response_class=HTMLResponse)
 def index(request: Request, q: str = "", category: str = "", sort: str = "new",
           session: Session = Depends(get_session)):
     category_id = int(category) if category.isdigit() else None
@@ -92,7 +92,7 @@ def delete_confirm(request: Request, item_id: int, session: Session = Depends(ge
 def delete(item_id: int, session: Session = Depends(get_session)):
     item = _item_or_404(session, item_id)
     library.delete_item(session, item)
-    return RedirectResponse("/?deleted=1", status_code=303)
+    return RedirectResponse("/browse?deleted=1", status_code=303)
 
 
 # ---------- photos ----------

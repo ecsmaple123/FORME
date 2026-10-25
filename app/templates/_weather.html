@@ -1,0 +1,37 @@
+{% from "_icons.html" import wx as wx_icon, icon %}
+{% if not has_place %}
+<div class="weather-card empty-weather">
+  {{ wx_icon("partly", "wx wx-lg") }}
+  <div>
+    <p class="wx-title">See the weather here</p>
+    <p class="muted small">Set your town in Settings to get today's forecast and what to wear.</p>
+    <a class="button" href="/settings#location">{{ icon("pin") }} Set location</a>
+  </div>
+</div>
+{% elif error %}
+<div class="weather-card">
+  {{ wx_icon("cloudy", "wx wx-lg wx-muted") }}
+  <div>
+    <p class="wx-place">{{ icon("pin") }} {{ place }}</p>
+    <p class="muted">{{ error }}</p>
+  </div>
+</div>
+{% else %}
+<div class="weather-card wx-{{ wx.icon }}">
+  <div class="wx-main">
+    {{ wx_icon(wx.icon, "wx wx-lg") }}
+    <div>
+      <p class="wx-temp">{{ wx.temp|deg }}</p>
+      <p class="wx-label">{{ wx.label }}</p>
+    </div>
+  </div>
+  <p class="wx-place">{{ icon("pin") }} {{ place }}</p>
+  <ul class="wx-stats">
+    <li title="Feels like">{{ icon("feels") }} Feels {{ wx.feels_like|deg }}</li>
+    <li title="Today's high / low">{{ icon("range") }} {{ wx.high|deg }} / {{ wx.low|deg }}</li>
+    {% if wx.rain_chance is not none %}<li title="Chance of rain today">{{ icon("rain") }} {{ wx.rain_chance }}%</li>{% endif %}
+    <li title="Wind">{{ icon("wind") }} {{ wx.wind|round|int }} {{ wx.wind_unit }}</li>
+  </ul>
+  <p class="wx-hint">{{ wx.hint }}</p>
+</div>
+{% endif %}

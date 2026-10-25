@@ -97,7 +97,7 @@ def test_browse_search_filter_sort(client):
     hx = {"HX-Request": "true"}
 
     def ids(**params):
-        r = client.get("/", params=params, headers=hx)
+        r = client.get("/browse", params=params, headers=hx)
         return [int(x) for x in re.findall(r'href="/items/(\d+)"', r.text)]
 
     assert ids() == [b, a]                       # newest first
@@ -108,7 +108,7 @@ def test_browse_search_filter_sort(client):
     assert ids(q="denim") == [a]                 # tag
     assert ids(q="100%") == []                   # LIKE wildcards are escaped
     assert ids(category="4") == [b]
-    full = client.get("/")
+    full = client.get("/browse")
     assert 'id="grid"' in full.text and "Outerwear" in full.text
 
 

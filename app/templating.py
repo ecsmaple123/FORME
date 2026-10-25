@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from .models import MAX_PHOTOS, PHOTO_KINDS, SEASONS, Item
+from .services import prefs
 from .services.library import MAX_PER_REQUEST, SORTS
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -32,5 +33,7 @@ def staged_url(staged, kind: str = "display") -> str:
 templates.env.globals.update(
     media_url=media_url, staged_url=staged_url, SEASONS=SEASONS, SORTS=SORTS,
     PHOTO_KINDS=PHOTO_KINDS, MAX_PHOTOS=MAX_PHOTOS, MAX_PER_REQUEST=MAX_PER_REQUEST,
+    prefs=prefs.get,
 )
 templates.env.filters["date"] = lambda d: d.strftime("%-d %b %Y") if d else ""
+templates.env.filters["deg"] = lambda v: f"{round(v):d}°"

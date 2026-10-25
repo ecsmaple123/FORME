@@ -1,0 +1,22 @@
+{% from "_icons.html" import icon %}
+<div id="picks">
+  <div class="section-head">
+    <div>
+      <h2>Today's picks</h2>
+      <p class="muted small">{{ picks.reason }}</p>
+    </div>
+    <button class="ghost" type="button" hx-get="/picks?shuffle=1" hx-target="#picks" hx-swap="outerHTML"
+            title="Show different picks">{{ icon("shuffle") }} Shuffle</button>
+  </div>
+  <ul class="picks">
+    {% for item in picks.items %}
+    <li class="pick">
+      <a href="/items/{{ item.id }}">
+        <div class="pick-img"><img src="{{ media_url(item, 'display') }}" alt="" loading="lazy"></div>
+        <p class="pick-name">{{ item.name }}</p>
+        <p class="muted small">{{ item.brand or item.category.name }}</p>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

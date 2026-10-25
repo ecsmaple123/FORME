@@ -41,6 +41,7 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   photo. Tested on a copy of the real data (10 photos, all "done", ~11 s each) with the libraries
   unpacked into `.segtest/`; 59 tests pass. Went live the same night after the user ran A2: all 10
   existing photos done (~12 s each), pre-rollout backup `backups/wardrobe-20261025-014734.tar.gz`.
+  The user checked the result: "everything looks good".
 - **Open:** URL import has only been tested against
   fixtures and non-store sites so far; the user should try real stores and send pages that fail.
 

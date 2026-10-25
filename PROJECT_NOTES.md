@@ -134,6 +134,15 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   install_unit), cloudflared 2026.10.3 armhf in `tunnel/` (git-ignored, sha256-checked), `--protocol
   http2` (TCP only, outgoing), metrics 127.0.0.1:8487 (`/quicktunnel` gives the hostname). 115 tests.
 
+## Where things stand (2026-10-25, end of session)
+- Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
+  only (push with the next change). No open bugs.
+- Running: `wardrobe.service` (TCP 192.168.0.129:8484), `wardrobe-cutout.service`,
+  `wardrobe-backup.timer`, `wardrobe-tunnel.service` (outgoing only; 127.0.0.1:8487 metrics).
+- Gemini key in `.env`; outside-access password set; tunnel on.
+- Ideas the user may come back to: a domain for a fixed public address (Cloudflare named tunnel);
+  what 👎 should do on Home's daily pick; per-person logins (they chose one shared password).
+
 ## Key facts
 - **Outside access:** `./wardrobe.sh tunnel status` prints the current https://…trycloudflare.com
   address (changes on every tunnel restart). cloudflared metrics on 127.0.0.1:8487 (loopback only).
@@ -142,7 +151,7 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
 - **Process:** systemd user unit `~/.config/systemd/user/wardrobe.service` (generated from
   `deploy/wardrobe.service` by `wardrobe.sh`). It runs `.venv/bin/python -m app serve` (uvicorn, 1 worker),
   with `ExecStartPre` running migrations. Restart=on-failure every 10 s, forever.
-- **Stop:** `./wardrobe.sh stop` (the timer keeps backing up; `systemctl --user disable --now wardrobe-backup.timer` to pause it). **Remove:** `./wardrobe.sh remove` (service + timer units), then
+- **Stop:** `./wardrobe.sh tunnel off` closes outside access only. `./wardrobe.sh stop` (the timer keeps backing up; `systemctl --user disable --now wardrobe-backup.timer` to pause it). **Remove:** `./wardrobe.sh remove` (service + timer units), then
   `rm -rf /home/claude/projects/wardrobe`.
 - **Logs:** `./wardrobe.sh logs` (user journal works on this Pi). The access log is off.
 - **Data:** `data/wardrobe.db` (SQLite, WAL) and `data/images/{orig,display,thumb}/<uuid>.*`;
@@ -253,19 +262,25 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
 ## Backups
 - Daily automatically at ~04:45 (`wardrobe-backup.timer`); `./wardrobe.sh status` shows the next run.
 - `./wardrobe.sh backup` → `backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz` + `.sha256`, keeps 7.
-  Contents: DB snapshot (SQLite backup API), `images/orig/`, `manifest.json`. Gzip level 1.
-  Display images and thumbnails are not included (they're rebuilt on restore).
-- Expected size: ~1–2 MB per item (the original photo). 200 items ≈ 300 MB per backup, ≈ 2 GB for 7.
+  Contents: DB snapshot (SQLite backup API, includes settings, the password hash and stylist
+  memory), `images/orig/` (fit pictures and photos not cut out yet), `images/cutout/` (the only copy
+  of item photos since 2026-10-25), `manifest.json`. Gzip level 1. Display images and thumbnails
+  are rebuilt on restore. Not included: `.env` (Gemini key) and `tunnel/` (re-downloaded).
+- Size: small (cutouts are WebP); a few MB for the current ~12 items.
 - Off-Pi: `bash C:\pi-work\wardrobe\pull-backups.sh` (manual), keeps 14 on the PC.
 - Restore: `./wardrobe.sh restore FILE` (README). The old data is kept as `data.before-restore-*`.
 
 ## Security notes
-- No login: anyone on the LAN or VPN can view and edit. The user accepted this for now. Basic auth via
-  `.env` is easy to add.
+- **Public since 2026-10-25** through the Cloudflare quick tunnel, behind one shared password (see the
+  status log entry "Outside access"). At home (192.168.0.0/24, not via the tunnel) there's no login;
+  VPN and tunnel visitors log in. The password was given in chat once; the user was told to change it.
+  Wrong-password limits are in memory (reset on restart). Responses carry `X-Robots-Tag: noindex`.
+- With the site public, these matter more: the free Gemini quota (only reachable after login) and
+  the SSRF guard below (only after login).
 - SSRF guard (`app/services/fetch.py`): http/https only; every resolved address must be public; every
   redirect hop is re-checked; max 5 redirects; 10 s timeout; 3 MB HTML / 20 MB image caps.
-  Remaining gap: DNS could change between the check and the connect (DNS rebinding). That's
-  acceptable for a LAN-only app.
+  Remaining gap: DNS could change between the check and the connect (DNS rebinding). Acceptable
+  because only logged-in users can make the Pi fetch anything.
 - Uploads are capped at 20 MB by a middleware before parsing; Pillow's decompression-bomb guard is
   an error, not a warning.
 - Templates are auto-escaped; the source URL must be http(s), so there are no `javascript:` links.

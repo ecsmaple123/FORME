@@ -47,13 +47,19 @@
 
     <div class="row">
       <label class="{{ 'invalid' if errors.category_id }}">Category
-        <select name="category_id" id="category_id" required>
+        <select name="category_id" id="category_id" required
+                onchange="var n=document.getElementById('new-category');n.hidden=this.value!=='new';if(!n.hidden)n.querySelector('input').focus()">
           <option value="">Choose…</option>
           {% for c in categories %}
-          <option value="{{ c.id }}" {% if data.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          <option value="{{ c.id }}" {% if data.category_id == c.id and not data.new_category %}selected{% endif %}>{{ c.name }}</option>
           {% endfor %}
+          <option value="new" {% if data.new_category %}selected{% endif %}>+ New category…</option>
         </select>
         {% if errors.category_id %}<span class="hint">{{ errors.category_id }}</span>{% endif %}
+      </label>
+      <label id="new-category" {% if not data.new_category %}hidden{% endif %}>New category
+        <input name="new_category" value="{{ data.new_category }}" maxlength="60" placeholder="e.g. Knitwear">
+        <span class="hint muted">Added to your categories when you save. Reorder them in Settings.</span>
       </label>
       <label>Subcategory
         <input name="subcategory" value="{{ data.subcategory }}" list="subcats" maxlength="80" placeholder="e.g. T-shirt">
@@ -77,7 +83,10 @@
       </label>
     </div>
 
-    <div class="row">
+    <div class="row three">
+      <label>Fabric <input name="fabric" value="{{ data.fabric }}" list="fabrics" maxlength="80" placeholder="e.g. Cashmere">
+        <datalist id="fabrics">{% for f in fabrics %}<option value="{{ f }}">{% endfor %}</datalist>
+      </label>
       <label>Brand <input name="brand" value="{{ data.brand }}" maxlength="100"></label>
       <label>Size <input name="size" value="{{ data.size }}" maxlength="40"></label>
     </div>

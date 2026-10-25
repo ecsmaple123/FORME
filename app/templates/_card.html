@@ -10,7 +10,7 @@
           title="{{ item.color_name }}"></span>{% endif %}
         {{ item.name }}
       </div>
-      <div class="muted">{{ item.brand or item.category.name }}{% if item.brand %} · {{ item.category.name }}{% endif %}</div>
+      <div class="muted card-fabric">{% if item.fabric %}{{ item.fabric }}{% else %}&nbsp;{% endif %}</div>
     </div>
   </a>
 </li>

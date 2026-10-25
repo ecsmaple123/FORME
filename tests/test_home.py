@@ -67,7 +67,7 @@ def test_empty_home_welcomes_and_asks_for_location(client):
 def test_home_with_items_shows_picks_and_recent(client):
     ids = [_add_item(client, f"Item {n}") for n in range(6)]
     r = client.get("/")
-    assert "6 pieces in your wardrobe" in r.text
+    assert "6 pieces in your closet" in r.text
     assert "Today's picks" in r.text and "Recently added" in r.text
     picks = re.findall(r'class="pick">\s*<a href="/items/(\d+)"', r.text)
     assert len(picks) == featured.COUNT and set(map(int, picks)) <= set(ids)
@@ -109,7 +109,7 @@ def test_dark_mode_setting(client):
     assert 'data-theme="system"' in client.get("/").text
     r = client.post("/settings", data={"name": "", "theme": "dark", "units": "c"}, follow_redirects=False)
     assert r.status_code == 303
-    for page in ("/", "/browse", "/settings", "/add"):
+    for page in ("/", "/closet", "/settings", "/add"):
         assert 'data-theme="dark"' in client.get(page).text
     r = client.post("/settings", data={"theme": "neon", "units": "c"})
     assert r.status_code == 422 and "Pick a theme" in r.text
@@ -185,10 +185,12 @@ def test_weather_failure_is_graceful_and_cached(client, meteo):
     assert len(meteo["requests"]) == 1  # failure cached briefly, no retry storm
 
 
-def test_browse_moved(client):
+def test_browse_is_now_closet(client):
     _add_item(client)
-    r = client.get("/browse")
-    assert 'id="filters"' in r.text and 'action="/browse"' in r.text
+    r = client.get("/closet")
+    assert 'id="filters"' in r.text and 'action="/closet"' in r.text and "<h1" in r.text
+    r = client.get("/browse?q=coat&sort=old", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/closet?q=coat&sort=old"
     item_id = _add_item(client, "Second")
     r = client.post(f"/items/{item_id}/delete", follow_redirects=False)
-    assert r.headers["location"] == "/browse?deleted=1"
+    assert r.headers["location"] == "/closet?deleted=1"

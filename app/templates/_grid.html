@@ -1,11 +1,22 @@
 {% from "_card.html" import card %}
 {% if items %}
 <p class="muted count">{{ items|length }} item{{ "" if items|length == 1 else "s" }}</p>
+{% if category_id %}
 <ul class="grid">
   {% for item in items %}{{ card(item) }}{% endfor %}
 </ul>
-{% elif q or category_id %}
-<p class="empty">Nothing matches. <a href="/browse">Clear filters</a></p>
 {% else %}
-<p class="empty">Your wardrobe is empty. <a href="/add">Add the first item</a>.</p>
+{% for cat, cat_items in groups %}
+<section class="closet-group" aria-labelledby="cat-{{ cat.id }}">
+  <h2 class="group-title" id="cat-{{ cat.id }}">{{ cat.name }} <span class="muted">{{ cat_items|length }}</span></h2>
+  <ul class="grid">
+    {% for item in cat_items %}{{ card(item) }}{% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% endif %}
+{% elif q or category_id %}
+<p class="empty">Nothing matches. <a href="/closet">Clear filters</a></p>
+{% else %}
+<p class="empty">Your closet is empty. <a href="/add">Add the first item</a>.</p>
 {% endif %}

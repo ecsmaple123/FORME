@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ item.name }} · FORME{% endblock %}
 {% block content %}
-<p><a href="/browse">← Back</a></p>
+<p><a href="/closet">← Closet</a></p>
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 <div class="detail">
   <div class="gallery">
@@ -90,10 +90,11 @@
       <dt>Category</dt><dd>{{ item.category.name }}{% if item.subcategory %} · {{ item.subcategory }}{% endif %}</dd>
       {% if item.color_hex %}<dt>Color</dt><dd><span class="dot" style="background: {{ item.color_hex }}"></span>
         {{ item.color_name }} <span class="muted">{{ item.color_hex }}</span></dd>{% endif %}
+      {% if item.fabric %}<dt>Fabric</dt><dd>{{ item.fabric }}</dd>{% endif %}
       {% if item.brand %}<dt>Brand</dt><dd>{{ item.brand }}</dd>{% endif %}
       {% if item.size %}<dt>Size</dt><dd>{{ item.size }}</dd>{% endif %}
       {% if item.season_list %}<dt>Seasons</dt><dd>{{ item.season_list|map('capitalize')|join(', ') }}</dd>{% endif %}
-      {% if item.tags %}<dt>Tags</dt><dd>{% for t in item.tags %}<a class="tag" href="/browse?q={{ t.name|urlencode }}">{{ t.name }}</a>{% endfor %}</dd>{% endif %}
+      {% if item.tags %}<dt>Tags</dt><dd>{% for t in item.tags %}<a class="tag" href="/closet?q={{ t.name|urlencode }}">{{ t.name }}</a>{% endfor %}</dd>{% endif %}
       {% if item.source_url %}<dt>Source</dt><dd><a href="{{ item.source_url }}" rel="noreferrer noopener" target="_blank">{{ item.source_url|truncate(60) }}</a></dd>{% endif %}
       <dt>Added</dt><dd>{{ item.created_at|date }}</dd>
     </dl>

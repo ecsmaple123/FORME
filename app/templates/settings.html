@@ -73,5 +73,42 @@
     </form>
     {% endif %}
   </section>
+
+  <section class="panel stack categories-panel" id="categories">
+    <h2>Categories</h2>
+    <p class="muted small">The closet shows your items in this order. Rename a category and press Save;
+      a category can be deleted once it's empty.</p>
+    <ol class="cat-list">
+      {% for c in categories %}
+      <li class="cat-row">
+        <div class="cat-move">
+          <form method="post" action="/categories/{{ c.id }}/move" class="inline-mini">
+            <input type="hidden" name="direction" value="up">
+            <button type="submit" class="icon-btn" title="Move up" aria-label="Move {{ c.name }} up" {% if loop.first %}disabled{% endif %}>{{ icon("up") }}</button>
+          </form>
+          <form method="post" action="/categories/{{ c.id }}/move" class="inline-mini">
+            <input type="hidden" name="direction" value="down">
+            <button type="submit" class="icon-btn" title="Move down" aria-label="Move {{ c.name }} down" {% if loop.last %}disabled{% endif %}>{{ icon("down") }}</button>
+          </form>
+        </div>
+        <form method="post" action="/categories/{{ c.id }}" class="cat-name">
+          <input name="name" value="{{ c.name }}" maxlength="60" required aria-label="Name of {{ c.name }}">
+          <button type="submit" class="ghost">Save</button>
+        </form>
+        <span class="cat-count muted small" title="Items">{{ counts.get(c.id, 0) }}</span>
+        {% if not counts.get(c.id) %}
+        <form method="post" action="/categories/{{ c.id }}/delete" class="inline-mini"
+              onsubmit='return confirm({{ ("Delete the category " ~ c.name ~ "?")|tojson }})'>
+          <button class="icon-btn danger-text" type="submit" title="Delete" aria-label="Delete {{ c.name }}">{{ icon("trash") }}</button>
+        </form>
+        {% else %}<span class="icon-btn-space"></span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    <form method="post" action="/categories" class="searchrow">
+      <input name="name" placeholder="New category" maxlength="60" required aria-label="New category name">
+      <button type="submit">{{ icon("plus") }} Add</button>
+    </form>
+  </section>
 </div>
 {% endblock %}

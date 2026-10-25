@@ -65,7 +65,7 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
     r = client.get(f"/items/{item_id}")
     assert f"/media/cutout/{photo.cutout_file}.webp" in r.text and "Show with background" in r.text
     assert client.get(f"/media/cutout/{photo.cutout_file}.thumb.webp").status_code == 200
-    grid = client.get("/browse", headers={"HX-Request": "true"})
+    grid = client.get("/closet", headers={"HX-Request": "true"})
     assert f"/media/cutout/{photo.cutout_file}.thumb.webp" in grid.text
     # colors now come from the garment only
     from app.services.colors import nearest_color_name

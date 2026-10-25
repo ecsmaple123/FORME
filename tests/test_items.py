@@ -40,7 +40,7 @@ def _item(item_id):
 
 
 def test_categories_seeded(client):
-    r = client.get("/categories")
+    r = client.get("/settings")
     for name in ["Tops", "Bottoms", "Dresses/One-pieces", "Outerwear", "Shoes",
                  "Accessories", "Bags", "Activewear", "Underwear/Sleepwear"]:
         assert name in r.text
@@ -91,24 +91,34 @@ def test_add_edit_delete(client, settings):
     assert client.get(f"/items/{item_id}").status_code == 404
 
 
-def test_browse_search_filter_sort(client):
+def test_closet_search_filter_sort(client):
     a = _create(client, name="Blue jeans", category_id="2", tags="denim")
     b = _create(client, name="Anorak", category_id="4", brand="Arket", tags="rain")
+    c = _create(client, name="Bomber", category_id="4", fabric="Suede")
     hx = {"HX-Request": "true"}
 
     def ids(**params):
-        r = client.get("/browse", params=params, headers=hx)
+        r = client.get("/closet", params=params, headers=hx)
         return [int(x) for x in re.findall(r'href="/items/(\d+)"', r.text)]
 
-    assert ids() == [b, a]                       # newest first
-    assert ids(sort="old") == [a, b]
-    assert ids(sort="name") == [b, a]
+    # grouped by category (Bottoms before Outerwear), sorted within each group
+    assert ids() == [a, c, b]                    # newest first
+    assert ids(sort="old") == [a, b, c]
+    assert ids(sort="name") == [a, b, c]
     assert ids(q="jeans") == [a]                 # name
     assert ids(q="ARKET") == [b]                 # brand, case-insensitive
+    assert ids(q="suede") == [c]                 # fabric
     assert ids(q="denim") == [a]                 # tag
     assert ids(q="100%") == []                   # LIKE wildcards are escaped
-    assert ids(category="4") == [b]
-    full = client.get("/browse")
+    assert ids(category="4") == [c, b]
+    grid = client.get("/closet", headers=hx).text
+    assert re.findall(r'class="group-title"[^>]*>([^<]+)<', grid) == ["Bottoms ", "Outerwear "]
+    assert "group-title" not in client.get("/closet", params={"category": "4"}, headers=hx).text
+    # the category order is the user's: move Outerwear above Bottoms (Dresses is between them)
+    for _ in range(2):
+        client.post("/categories/4/move", data={"direction": "up"})
+    assert ids() == [c, b, a]
+    full = client.get("/closet")
     assert 'id="grid"' in full.text and "Outerwear" in full.text
 
 
@@ -151,15 +161,24 @@ def test_category_crud(client):
     item_id = _create(client, category_id="1")
     r = client.post("/categories/1/delete")
     assert r.status_code == 422 and "still has 1 item" in r.text
-    r = client.post("/categories", data={"name": "tops", "sort_order": "5"})
-    assert r.status_code == 422 and "already a category" in r.text
-    r = client.post("/categories", data={"name": "Swimwear", "sort_order": "95"},
-                    follow_redirects=False)
-    assert r.status_code == 303
-    r = client.post("/categories/1", data={"name": "T-shirts & tops", "sort_order": "0"},
-                    follow_redirects=False)
+    r = client.post("/categories", data={"name": "tops"})
+    assert r.status_code == 422 and "already a category" in r.text and 'id="categories"' in r.text
+    r = client.post("/categories", data={"name": "Swimwear"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/settings#categories"
+    names = re.findall(r'aria-label="Name of ([^"]+)"', client.get("/settings").text)
+    assert names[-1] == "Swimwear"               # new categories go last
+    r = client.post("/categories/1", data={"name": "T-shirts & tops"}, follow_redirects=False)
     assert r.status_code == 303
     assert "T-shirts &amp; tops" in client.get(f"/items/{item_id}").text
+    # moving: up from the top and down from the bottom are no-ops
+    client.post("/categories/2/move", data={"direction": "up"})
+    client.post("/categories/2/move", data={"direction": "up"})
+    names = re.findall(r'aria-label="Name of ([^"]+)"', client.get("/settings").text)
+    assert names[:2] == ["Bottoms", "T-shirts &amp; tops"]
+    # the old page and its nav link are gone
+    r = client.get("/categories", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/settings#categories"
+    assert 'href="/categories"' not in client.get("/").text
 
 
 def test_backup_and_restore(client, settings):

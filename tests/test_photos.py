@@ -52,7 +52,7 @@ def test_create_with_several_photos_and_kinds(client):
     # colors come from the cover (navy), not the second photo
     from app.services.colors import nearest_color_name
     assert nearest_color_name(item.colors[0].hex) == "navy"
-    r = client.get("/browse", headers={"HX-Request": "true"})
+    r = client.get("/closet", headers={"HX-Request": "true"})
     assert 'class="count-badge"' in r.text
 
 

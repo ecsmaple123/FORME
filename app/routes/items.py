@@ -34,6 +34,7 @@ def render_form(request: Request, session: Session, data: ItemData, *, item=None
         "staged": list(zip(staged, staged_kinds or [])) if staged else [],
         "categories": library.list_categories(session),
         "subcats": library.subcategory_suggestions(session),
+        "fabrics": library.fabric_suggestions(session),
     }, status_code=status_code)
 
 
@@ -43,18 +44,27 @@ def _detail(request: Request, item, photo=None, error: str = "", status_code: in
     }, status_code=status_code)
 
 
-@router.get("/browse", response_class=HTMLResponse)
+@router.get("/closet", response_class=HTMLResponse)
 def index(request: Request, q: str = "", category: str = "", sort: str = "new",
           session: Session = Depends(get_session)):
+    """All items, grouped by category in the order set in Settings (one category: no grouping)."""
     category_id = int(category) if category.isdigit() else None
     sort = sort if sort in library.SORTS else "new"
     items = library.search_items(session, q, category_id, sort)
-    ctx = {"items": items, "q": q, "category_id": category_id, "sort": sort}
+    categories = library.list_categories(session)
+    ctx = {"items": items, "q": q, "category_id": category_id, "sort": sort,
+           "groups": library.group_by_category(items, categories)}
     if request.headers.get("HX-Request"):
         return templates.TemplateResponse(request, "_grid.html", ctx)
-    ctx.update(categories=library.list_categories(session),
-               counts=library.category_counts(session))
+    ctx.update(categories=categories, counts=library.category_counts(session))
     return templates.TemplateResponse(request, "index.html", ctx)
+
+
+@router.get("/browse")
+def browse_moved(request: Request):
+    """Browse was renamed Closet; keep old links and bookmarks working."""
+    query = request.url.query
+    return RedirectResponse("/closet" + ("?" + query if query else ""), status_code=301)
 
 
 @router.get("/items/{item_id}", response_class=HTMLResponse)
@@ -92,7 +102,7 @@ def delete_confirm(request: Request, item_id: int, session: Session = Depends(ge
 def delete(item_id: int, session: Session = Depends(get_session)):
     item = _item_or_404(session, item_id)
     library.delete_item(session, item)
-    return RedirectResponse("/browse?deleted=1", status_code=303)
+    return RedirectResponse("/closet?deleted=1", status_code=303)
 
 
 # ---------- photos ----------

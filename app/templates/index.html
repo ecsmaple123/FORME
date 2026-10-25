@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Browse · FORME{% endblock %}
+{% block title %}Closet · FORME{% endblock %}
 {% block content %}
-<form id="filters" class="filters" method="get" action="/browse"
-      hx-get="/browse" hx-target="#grid" hx-push-url="true"
+<h1 class="page-title">Closet</h1>
+<form id="filters" class="filters" method="get" action="/closet"
+      hx-get="/closet" hx-target="#grid" hx-push-url="true"
       hx-trigger="input changed delay:300ms from:#q, search from:#q, change">
   <div class="chips" role="radiogroup" aria-label="Category">
     <label class="chip"><input type="radio" name="category" value=""
@@ -14,9 +15,9 @@
     {% endfor %}
   </div>
   <div class="searchrow">
-    <input id="q" type="search" name="q" value="{{ q }}" placeholder="Search name, brand or tag"
+    <input id="q" type="search" name="q" value="{{ q }}" placeholder="Search name, fabric, brand or tag"
            autocomplete="off">
-    <select name="sort" aria-label="Sort">
+    <select name="sort" aria-label="Sort within each category">
       {% for key, label in SORTS.items() %}
       <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>
       {% endfor %}

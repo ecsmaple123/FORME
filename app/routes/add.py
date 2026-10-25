@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from ..bookmarklet import bookmarklet
 from ..db import get_session
-from ..services import colors, library
+from ..services import colors, fabric, library
 from ..services.library import ItemData, UserError
 from ..templating import templates
 from .forms import item_form
@@ -39,7 +39,9 @@ def _preview(request: Request, *, url: str, title: str, brand: str, candidates: 
 def _new_item_form(request: Request, session: Session, staged: list, kind: str, *,
                    name: str = "", brand: str = "", source_url: str = "",
                    warnings: Optional[List[str]] = None):
-    data = ItemData(name=name.strip(), brand=brand.strip(), source_url=source_url.strip())
+    name, found_fabric = fabric.split_name(name)  # "Cashmere Overcoat" -> "Overcoat" + Cashmere
+    data = ItemData(name=name, fabric=found_fabric, brand=brand.strip(),
+                    source_url=source_url.strip())
     if staged[0].primary_hex:
         data.color_hex = staged[0].primary_hex
         data.color_name = colors.nearest_color_name(staged[0].primary_hex)

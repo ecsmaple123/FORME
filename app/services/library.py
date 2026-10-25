@@ -24,7 +24,7 @@ from ..config import get_settings
 from ..db import get_engine
 from ..models import (MAX_PHOTOS, PHOTO_KINDS, SEASONS, Category, Item, ItemColor, ItemPhoto,
                       ItemTag, OutfitItem, Tag, utcnow)
-from . import colors, fetch, images
+from . import colors, fabric, fetch, images
 from .extract import Extracted, parse_product_html
 
 STEM_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -210,12 +210,14 @@ class ItemData:
     subcategory: str = ""
     color_hex: str = ""
     color_name: str = ""
+    fabric: str = ""
     brand: str = ""
     size: str = ""
     seasons: List[str] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     notes: str = ""
     source_url: str = ""
+    new_category: str = ""  # typed into the form: created on save if it doesn't exist
 
     @property
     def tags_text(self) -> str:
@@ -225,7 +227,8 @@ class ItemData:
     def from_item(cls, item: Item) -> "ItemData":
         return cls(
             name=item.name, category_id=item.category_id, subcategory=item.subcategory,
-            color_hex=item.color_hex, color_name=item.color_name, brand=item.brand,
+            color_hex=item.color_hex, color_name=item.color_name, fabric=item.fabric,
+            brand=item.brand,
             size=item.size, seasons=item.season_list, tags=[t.name for t in item.tags],
             notes=item.notes, source_url=item.source_url,
         )
@@ -245,8 +248,12 @@ def validate(data: ItemData, session: Session) -> Dict[str, str]:
     data.name = data.name.strip()[:200]
     if not data.name:
         errors["name"] = "Give the item a name."
-    if data.category_id is None or session.get(Category, data.category_id) is None:
+    data.new_category = _category_name(data.new_category)
+    if data.new_category:
+        data.category_id = None  # resolved below, once everything else is valid
+    elif data.category_id is None or session.get(Category, data.category_id) is None:
         errors["category_id"] = "Pick a category."
+    data.fabric = fabric.clean(data.fabric)
     data.color_hex = data.color_hex.strip().lower()
     if data.color_hex and not HEX_RE.match(data.color_hex):
         errors["color_hex"] = "Use a hex color like #1d2645."
@@ -259,6 +266,10 @@ def validate(data: ItemData, session: Session) -> Dict[str, str]:
     for attr, limit in (("subcategory", 80), ("color_name", 40), ("brand", 100),
                         ("size", 40), ("notes", 4000)):
         setattr(data, attr, getattr(data, attr).strip()[:limit])
+    if data.new_category and not errors:
+        # Reuse a same-named category; otherwise add it at the end. Committed with the item.
+        data.category_id = find_or_add_category(session, data.new_category).id
+        data.new_category = ""
     return errors
 
 
@@ -268,6 +279,7 @@ def _apply(item: Item, data: ItemData, session: Session) -> None:
     item.subcategory = data.subcategory
     item.color_hex = data.color_hex
     item.color_name = data.color_name
+    item.fabric = data.fabric
     item.brand = data.brand
     item.size = data.size
     item.seasons = ",".join(data.seasons)
@@ -461,6 +473,7 @@ def search_items(session: Session, q: str = "", category_id: Optional[int] = Non
             Tag.name.ilike(like, escape="\\"))
         stmt = stmt.where(or_(
             Item.name.ilike(like, escape="\\"),
+            Item.fabric.ilike(like, escape="\\"),
             Item.brand.ilike(like, escape="\\"),
             Item.id.in_(tagged),
         ))
@@ -483,6 +496,17 @@ def subcategory_suggestions(session: Session) -> Dict[int, List[str]]:
     return {k: sorted(v, key=str.lower) for k, v in out.items()}
 
 
+def fabric_suggestions(session: Session) -> List[str]:
+    """Fabrics already used, then the common ones (for the form's suggestion list)."""
+    used = session.exec(select(Item.fabric).where(Item.fabric != "").distinct()).all()
+    seen, out = set(), []
+    for name in sorted(used, key=str.lower) + fabric.SUGGESTIONS:
+        if name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+    return out
+
+
 # ---------- categories ----------
 
 def list_categories(session: Session) -> List[Category]:
@@ -494,19 +518,66 @@ def category_counts(session: Session) -> Dict[int, int]:
     return dict(rows)
 
 
-def save_category(session: Session, name: str, sort_order: int,
-                  category: Optional[Category] = None) -> Category:
-    name = re.sub(r"\s+", " ", name or "").strip()[:60]
+def group_by_category(items: Sequence[Item],
+                      categories: Sequence[Category]) -> List[Tuple[Category, List[Item]]]:
+    """Items in the user's category order (set in Settings), keeping their order within each."""
+    by_cat: Dict[int, List[Item]] = {}
+    for item in items:
+        by_cat.setdefault(item.category_id, []).append(item)
+    return [(c, by_cat[c.id]) for c in categories if c.id in by_cat]
+
+
+def _category_name(name: str) -> str:
+    return re.sub(r"\s+", " ", name or "").strip()[:60]
+
+
+def _find_category(session: Session, name: str) -> Optional[Category]:
+    return session.exec(select(Category).where(func.lower(Category.name) == name.lower())).first()
+
+
+def _next_sort_order(session: Session) -> int:
+    return (session.exec(select(func.max(Category.sort_order))).one() or 0) + 10
+
+
+def find_or_add_category(session: Session, name: str) -> Category:
+    """For the item form: the existing category with this name (any case), or a new one at the
+    end. Only flushed, so it is saved together with the item."""
+    name = _category_name(name)
+    category = _find_category(session, name)
+    if category is None:
+        category = Category(name=name, sort_order=_next_sort_order(session))
+        session.add(category)
+        session.flush()
+    return category
+
+
+def save_category(session: Session, name: str, category: Optional[Category] = None) -> Category:
+    """Add a category (at the end) or rename one."""
+    name = _category_name(name)
     if not name:
         raise UserError("A category needs a name.")
-    clash = session.exec(select(Category).where(func.lower(Category.name) == name.lower())).first()
+    clash = _find_category(session, name)
     if clash and (category is None or clash.id != category.id):
         raise UserError(f"There is already a category called {clash.name}.")
-    category = category or Category(name=name)
-    category.name, category.sort_order = name, sort_order
+    if category is None:
+        category = Category(name=name, sort_order=_next_sort_order(session))
+    category.name = name
     session.add(category)
     session.commit()
     return category
+
+
+def move_category(session: Session, category: Category, step: int) -> None:
+    """Move one place up (step -1) or down (+1). Renumbers 10, 20, … so the order stays clean."""
+    ordered = list_categories(session)
+    i = next(n for n, c in enumerate(ordered) if c.id == category.id)
+    j = i + step
+    if 0 <= j < len(ordered):
+        ordered[i], ordered[j] = ordered[j], ordered[i]
+    for n, c in enumerate(ordered):
+        c.sort_order = (n + 1) * 10
+        session.add(c)
+    session.commit()
 
 
 def delete_category(session: Session, category: Category) -> None:

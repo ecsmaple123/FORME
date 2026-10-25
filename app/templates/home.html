@@ -7,9 +7,9 @@
     <p class="eyebrow">{{ now.strftime("%A, %-d %B") }}</p>
     <h1 class="greeting">{{ greeting }}{% if name %}, <span class="name">{{ name }}</span>{% endif %}.</h1>
     {% if count %}
-    <p class="lede">{{ count }} piece{{ "" if count == 1 else "s" }} in your wardrobe.</p>
+    <p class="lede">{{ count }} piece{{ "" if count == 1 else "s" }} in your closet.</p>
     <div class="hero-actions">
-      <a class="button primary" href="/browse">Browse wardrobe {{ icon("arrow") }}</a>
+      <a class="button primary" href="/closet">Open closet {{ icon("arrow") }}</a>
       <a class="button" href="/add">{{ icon("plus") }} Add item</a>
     </div>
     {% else %}
@@ -34,7 +34,7 @@
 <section class="section">
   <div class="section-head">
     <h2>Recently added</h2>
-    <a class="section-link" href="/browse">See all {{ icon("arrow") }}</a>
+    <a class="section-link" href="/closet">See all {{ icon("arrow") }}</a>
   </div>
   <ul class="grid rail">
     {% for item in recent %}{{ card(item) }}{% endfor %}

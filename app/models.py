@@ -42,6 +42,7 @@ class Item(SQLModel, table=True):
     subcategory: str = Field(default="", max_length=80)
     color_hex: str = Field(default="", max_length=7)
     color_name: str = Field(default="", max_length=40)
+    fabric: str = Field(default="", max_length=80)
     brand: str = Field(default="", max_length=100)
     size: str = Field(default="", max_length=40)
     seasons: str = Field(default="", max_length=60)  # comma list from SEASONS

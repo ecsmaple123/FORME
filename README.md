@@ -35,7 +35,12 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   For iPhone HEIC, export as JPEG first. Up to 60 MB per upload in total.
 - The primary color is pre-filled from the photo (white backgrounds are ignored). Click a swatch or
   use the picker to change it.
-- **Browse:** category chips, search (name, brand, tag) and sort.
+- **Home:** a greeting, today's weather (once a location is set) with a what-to-wear hint, four
+  featured picks (random for now, the same all day; **Shuffle** for new ones) and recently added items.
+- **Settings** (gear icon): your name for the greeting, **Appearance** (System / Light / Dark),
+  °C or °F, and the weather location (search a town, click the right one). Weather comes from
+  Open-Meteo (free, no account); only the location's coordinates are sent.
+- **Browse** (`/browse`): category chips, search (name, brand, tag) and sort.
 - **Categories:** rename, reorder, add, and delete when empty.
 
 ## Control (on the Pi, in the project folder)

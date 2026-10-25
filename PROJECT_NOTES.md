@@ -45,6 +45,15 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
 - **2026-10-25: Bookmark confirmed on real stores** (user: "the bookmark works fine"). No open items;
   if a store page ever fails, the user will send it. Server-side URL import still only tested on
   fixtures and non-store sites (stores like Loro Piana block the Pi; the bookmark covers them).
+- **2026-10-25: Home page, settings and dark mode** (user: "aesthetically pleasing home screen ... a few
+  featured items (random for now but later ... ai recommend them based on the weather and style), a welcome
+  message and weather display (with icons ...) ... dark mode ... settings page"). Commit dfdcf2d, 72 tests.
+  Details in "Home, weather, settings" below. Migration 0004 (`setting` table) ran live after backup
+  `backups/wardrobe-20261025-022422.tar.gz`. Checked with headless Edge screenshots (light/dark,
+  desktop/390 px). The user hasn't seen it yet, and no weather location is set on the live app (the user
+  picks one in Settings).
+  Lesson: copying templates into the Pi tree before restarting broke the live app for a few minutes
+  (old code + new templates → 500). Test in a separate checkout or restart immediately.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
@@ -170,13 +179,30 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
   an error, not a warning.
 - Templates are auto-escaped; the source URL must be http(s), so there are no `javascript:` links.
 
+## Home, weather, settings
+- `/` = home (`app/routes/home.py`); browse moved to `/browse`. `/weather` and `/picks?shuffle=1`
+  are HTMX partials (the weather card loads after the page, so a slow API never delays it).
+- **Weather:** `app/services/weather.py`, Open-Meteo geocoding + forecast (free, no key, HTTPS outbound
+  from the Pi; only the coordinates are sent). In-process cache: 30 min, failures 5 min. WMO code →
+  label + icon (night variants), plus a one-line hint by feels-like °C. °F/mph come from the API itself.
+- **Prefs:** `app/services/prefs.py`, key/value table `setting` (name, theme, units, place, latitude,
+  longitude, timezone), cached per engine. Validated on save (theme/units sets, finite in-range coords,
+  known IANA zone or blank).
+- **Dark mode:** CSS tokens in `style.css`; `<html data-theme=system|light|dark>`; "system" follows
+  `prefers-color-scheme`. Photo tiles in dark mode use a lit gradient so dark garments stay visible.
+- **Icons:** hand-drawn inline SVG macros in `templates/_icons.html` (colors from `--wx-*` tokens).
+  Jinja gotcha: numbers need a leading zero (`0.62`, not `.62`).
+- **Featured picks:** `app/services/featured.py` `pick(session, day, weather=None, ...)`: random, seeded by
+  date (same picks all day), cutout items first. The `weather` argument is the hook for the planned
+  AI recommender (weather + style); the home route doesn't pass weather yet.
+
 ## Extension points (not built)
+- **AI picks:** replace the body of `featured.pick` (see above); route and templates already show `Picks.reason`.
 - **Color sorting:** `item_color` (rank, hex, share, Lab, hue) is filled on every upload.
 - **Outfits:** the `outfit` and `outfit_item` tables exist (migration 0001). Deleting an item also
   removes its outfit links.
 - **AI:** `app/services/ai.py` is the only place for Claude API calls (httpx + Messages API; key
   `ANTHROPIC_API_KEY` in `.env`, chmod 600, git-ignored). The stubs raise NotImplementedError.
-- **Background removal:** `item.cutout_file` column; plan is rembg on the Windows PC (PLAN.md §8).
 
 ## Stage 0 audit (2026-10-24, read-only)
 - **Python:** 3.9.2 (`/usr/bin/python3`), armhf userland on an aarch64 kernel.

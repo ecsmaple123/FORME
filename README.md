@@ -31,12 +31,13 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
 | `./wardrobe.sh update` | backup → `git pull` (if there's a remote) → pip install → migrate → restart |
 | `./wardrobe.sh rebuild-images` | regenerate display images and thumbnails from the originals |
 | `./wardrobe.sh test` | run the test suite |
-| `./wardrobe.sh remove` | stop + disable + delete the unit file (data and code stay) |
+| `./wardrobe.sh remove` | stop + disable + delete the service and backup-timer units (data and code stay) |
 
-The service starts at boot (lingering is on for `claude`) and restarts if it crashes.
+`start`/`restart` also install and enable the daily backup timer. The service starts at boot (lingering is on for `claude`) and restarts if it crashes.
 
 ## Backups
-`./wardrobe.sh backup` writes `backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz` plus a `.sha256` file. Each archive holds:
+A backup runs **every day at about 04:45** (`wardrobe-backup.timer`, 30 min after matrix-hub's).
+`./wardrobe.sh status` shows the next run. `./wardrobe.sh backup` makes one now. Each run writes `backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz` plus a `.sha256` file. Each archive holds:
 - `wardrobe.db`: a consistent SQLite snapshot (safe while the app runs)
 - `images/orig/`: the original photos (display images and thumbnails are rebuilt on restore)
 - `manifest.json`: item count, schema revision and git commit

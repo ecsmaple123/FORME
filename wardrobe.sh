@@ -5,23 +5,30 @@ set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
 UNIT=wardrobe.service
-UNIT_DST="$HOME/.config/systemd/user/$UNIT"
+UNIT_DIR="$HOME/.config/systemd/user"
+UNIT_DST="$UNIT_DIR/$UNIT"
+TIMER=wardrobe-backup.timer
 PY=.venv/bin/python
 LIMIT_AS="${LIMIT_AS:-512M}"  # see PROJECT_NOTES.md "Memory"
 
 url() { "$PY" -c 'from app.config import get_settings as g; s=g(); print(f"http://{s.host}:{s.port}")'; }
 
 install_unit() {
-  mkdir -p "$(dirname "$UNIT_DST")"
-  local tmp; tmp=$(mktemp)
-  sed -e "s|@DIR@|$PWD|g" -e "s|@LIMIT_AS@|$LIMIT_AS|g" deploy/wardrobe.service > "$tmp"
-  if ! cmp -s "$tmp" "$UNIT_DST" 2>/dev/null; then
-    mv "$tmp" "$UNIT_DST"
-    systemctl --user daemon-reload
-  else
-    rm -f "$tmp"
-  fi
+  # Installs/refreshes the app service and the daily backup timer from deploy/.
+  mkdir -p "$UNIT_DIR"
+  local changed=0 tmp f
+  for f in wardrobe.service wardrobe-backup.service wardrobe-backup.timer; do
+    tmp=$(mktemp)
+    sed -e "s|@DIR@|$PWD|g" -e "s|@LIMIT_AS@|$LIMIT_AS|g" "deploy/$f" > "$tmp"
+    if ! cmp -s "$tmp" "$UNIT_DIR/$f" 2>/dev/null; then
+      mv "$tmp" "$UNIT_DIR/$f"; changed=1
+    else
+      rm -f "$tmp"
+    fi
+  done
+  [[ $changed == 1 ]] && systemctl --user daemon-reload
   systemctl --user enable -q "$UNIT"
+  systemctl --user enable -q --now "$TIMER"
 }
 
 wait_healthy() {
@@ -55,6 +62,7 @@ case "${1:-}" in
     curl -fsS -m 2 "$(url)/healthz" 2>/dev/null && echo || echo "health: not answering"
     last=$(ls -1 backups/wardrobe-*.tar.gz 2>/dev/null | tail -1 || true)
     echo "last backup: ${last:-none}"
+    echo "next backup: $(systemctl --user show -p NextElapseUSecRealtime --value "$TIMER" 2>/dev/null || echo unknown)"
     du -sh data 2>/dev/null | awk '{print "data size: " $1}' ;;
   logs)
     shift
@@ -80,10 +88,10 @@ case "${1:-}" in
   test)
     "$PY" -m pytest -q tests ;;
   remove)
-    systemctl --user disable --now "$UNIT" 2>/dev/null || true
-    rm -f "$UNIT_DST"
+    systemctl --user disable --now "$TIMER" "$UNIT" 2>/dev/null || true
+    rm -f "$UNIT_DST" "$UNIT_DIR/wardrobe-backup.service" "$UNIT_DIR/$TIMER"
     systemctl --user daemon-reload
-    echo "service removed. Data, backups and code are still in $PWD."
+    echo "service + backup timer removed. Data, backups and code are still in $PWD."
     echo "To delete everything: rm -rf $PWD" ;;
   *)
     sed -n '2,3p' "$0"; exit 2 ;;

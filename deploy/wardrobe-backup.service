@@ -1,0 +1,11 @@
+# Installed by ./wardrobe.sh start (@DIR@ is replaced with the project path).
+[Unit]
+Description=wardrobe backup (database + original photos)
+
+[Service]
+Type=oneshot
+WorkingDirectory=@DIR@
+Environment=TMPDIR=@DIR@/data/tmp
+ExecStart=@DIR@/.venv/bin/python -m app backup
+Nice=15
+IOSchedulingClass=idle

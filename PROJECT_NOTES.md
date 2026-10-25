@@ -14,15 +14,20 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   Verified live: all pages, create→edit→delete, real-internet og:image extraction, SSRF block
   of 192.168.0.1 and 127.0.0.1:8443, backup + checksum, `./wardrobe.sh restore`, `pull-backups.sh`.
   One smoke-test backup (empty DB) exists: `backups/wardrobe-20261024-213616.tar.gz` (also on the PC).
-- **Open:** whether the user wants a daily backup timer. URL import has only been tested against
+- **2026-10-24: Daily backup timer added** at the user's request ("back up just like matrix is"):
+  `wardrobe-backup.timer` at 04:45 (+ up to 10 min random, Persistent=true), running at Nice 15 with
+  idle I/O, same pattern as matrix-hub's 04:15 timer, 30 min later so the two never overlap. A test run
+  through the service succeeded (`backups/wardrobe-20261024-214327.tar.gz`, checksum OK).
+- **Open:** URL import has only been tested against
   fixtures and non-store sites so far; the user should try real stores and send pages that fail.
 
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
+- **Backups:** daily via `wardrobe-backup.timer` (04:45) → `wardrobe-backup.service` → `python -m app backup`.
 - **Process:** systemd user unit `~/.config/systemd/user/wardrobe.service` (generated from
   `deploy/wardrobe.service` by `wardrobe.sh`). It runs `.venv/bin/python -m app serve` (uvicorn, 1 worker),
   with `ExecStartPre` running migrations. Restart=on-failure every 10 s, forever.
-- **Stop:** `./wardrobe.sh stop`. **Remove:** `./wardrobe.sh remove` (unit only), then
+- **Stop:** `./wardrobe.sh stop` (the timer keeps backing up; `systemctl --user disable --now wardrobe-backup.timer` to pause it). **Remove:** `./wardrobe.sh remove` (service + timer units), then
   `rm -rf /home/claude/projects/wardrobe`.
 - **Logs:** `./wardrobe.sh logs` (user journal works on this Pi). The access log is off.
 - **Data:** `data/wardrobe.db` (SQLite, WAL) and `data/images/{orig,display,thumb}/<uuid>.*`;
@@ -65,6 +70,7 @@ httpx 0.28.1 · beautifulsoup4 4.15.0 · jinja2 3.1.6 · pytest 8.4.2 · htmx 2.
 sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need an OS upgrade (Bookworm).
 
 ## Backups
+- Daily automatically at ~04:45 (`wardrobe-backup.timer`); `./wardrobe.sh status` shows the next run.
 - `./wardrobe.sh backup` → `backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz` + `.sha256`, keeps 7.
   Contents: DB snapshot (SQLite backup API), `images/orig/`, `manifest.json`. Gzip level 1.
   Display images and thumbnails are not included (they're rebuilt on restore).

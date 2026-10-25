@@ -129,7 +129,7 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   live in the `setting` table (`auth_password`, `auth_secret`), so they're in backups. Wrong
   passwords: 5 per address / 20 overall per 15 min (in memory). No password = outside refused.
   Settings > Outside access (set/change; remove only at home; log out away from home; shows the
-  public address). CLI `./wardrobe.sh password [set|remove]`. VPN visitors (10.88.x) log in too.
+  public address). CLI `./wardrobe.sh password [set|remove]`. VPN visitors log in too.
   Tunnel: `./wardrobe.sh tunnel on|off|status`, unit `wardrobe-tunnel.service` (opt-in, not in
   install_unit), cloudflared 2026.10.3 armhf in `tunnel/` (git-ignored, sha256-checked), `--protocol
   http2` (TCP only, outgoing), metrics 127.0.0.1:8487 (`/quicktunnel` gives the hostname). 115 tests.

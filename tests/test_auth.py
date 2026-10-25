@@ -95,7 +95,7 @@ def test_tunnel_and_the_pi_itself_never_count_as_home(settings):
     assert not auth.is_home("192.168.0.50", {"cf-connecting-ip": "203.0.113.9"})
     assert not auth.is_home(settings.host, {})
     assert not auth.is_home("127.0.0.1", {})
-    assert not auth.is_home("172.16.5.2", {})  # VPN visitors log in like anyone outside
+    assert not auth.is_home("172.16.5.2", {})  # e.g. VPN visitors: they log in like anyone outside
     assert not auth.is_home("testclient", {})
     assert auth.on_the_pi(settings.host, {}) and not auth.on_the_pi(settings.host, {"cf-ray": "x"})
 

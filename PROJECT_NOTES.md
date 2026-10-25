@@ -29,6 +29,10 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   The pre-migration backup is `backups/wardrobe-20261024-215727.tar.gz` (schema 0001). 47 tests pass; the
   bookmark JS was tested in Node against a fake product page (PC only; nothing built on the Pi).
   Live: 3× 24 MP JPEG in one upload peaked at 100 MB RSS (processed one at a time).
+- 2026-10-24 — **Public on GitHub as FORME:** GitHub. The UI and README
+  now say FORME; the folder, service, commands and data keep the name `wardrobe`. Commits are now made as
+  the user (Forest Li, GitHub noreply email). GitHub gets a cleaned copy built on the PC by
+  `C:\pi-work\sync-repos.sh` (redaction + leak check); this repo is unchanged.
 - **Open:** URL import has only been tested against
   fixtures and non-store sites so far; the user should try real stores and send pages that fail.
 

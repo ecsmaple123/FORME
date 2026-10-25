@@ -1,0 +1,25 @@
+# systemd *user* unit, installed by ./wardrobe.sh start (@DIR@ is replaced with the project path).
+# Removes the background of new photos (see app/worker.py). Idle priority: it only gets CPU time
+# nothing else wants, so the VPNs and the Matrix hub always come first.
+[Unit]
+Description=FORME background removal worker
+After=wardrobe.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=@DIR@
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 MALLOC_ARENA_MAX=2 TMPDIR=@DIR@/data/tmp
+Environment=OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+ExecStart=@DIR@/.venv/bin/python -m app cutout-worker
+Restart=on-failure
+RestartSec=60
+# No memory cgroup on this Pi: cap the address space instead. A batch peaked at 348 MB RSS /
+# 530 MB virtual (10 photos, 2026-10-25).
+LimitAS=@CUTOUT_LIMIT_AS@
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

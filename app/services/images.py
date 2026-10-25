@@ -78,11 +78,20 @@ def paths(images_dir: Path, stem: str, ext: str = "jpg") -> dict:
     }
 
 
-def delete_files(images_dir: Path, stem: str, ext: str) -> None:
-    if not stem:
-        return
-    for p in paths(images_dir, stem, ext).values():
-        p.unlink(missing_ok=True)
+def cutout_paths(images_dir: Path, name: str) -> dict:
+    return {
+        "display": images_dir / "cutout" / f"{name}.webp",
+        "thumb": images_dir / "cutout" / f"{name}.thumb.webp",
+    }
+
+
+def delete_files(images_dir: Path, stem: str, ext: str, cutout: Optional[str] = None) -> None:
+    if stem:
+        for p in paths(images_dir, stem, ext).values():
+            p.unlink(missing_ok=True)
+    if cutout:
+        for p in cutout_paths(images_dir, cutout).values():
+            p.unlink(missing_ok=True)
 
 
 def sha256_file(path: Path) -> str:
@@ -168,20 +177,27 @@ def _load_scaled(path: Path, max_edge: int) -> Image.Image:
 
 
 def dominant_colors(im: Image.Image, count: int = 5) -> List[DominantColor]:
-    """Main colors, ignoring a uniform background (e.g. the white of product shots)."""
+    """Main colors, ignoring a uniform background (e.g. the white of product shots).
+
+    For a cutout (RGBA) only the opaque pixels count, so no background guessing is needed.
+    """
     small = im.copy()
     small.thumbnail((COLOR_SAMPLE, COLOR_SAMPLE))
     w, h = small.size
-    pixels = list(small.getdata())
-
-    border = [pixels[x] for x in range(w)] + [pixels[(h - 1) * w + x] for x in range(w)]
-    border += [pixels[y * w] for y in range(h)] + [pixels[y * w + w - 1] for y in range(h)]
-    bg = tuple(sorted(c[i] for c in border)[len(border) // 2] for i in range(3))
-    near_bg = sum(1 for c in border if colors.color_distance(c, bg) < 12)
-    if near_bg / len(border) > 0.6:
-        fg = [c for c in pixels if colors.color_distance(c, bg) >= 12]
-        if len(fg) >= len(pixels) * 0.03:
-            pixels = fg
+    if small.mode == "RGBA":
+        opaque = [c[:3] for c in small.getdata() if c[3] >= 128]
+        small = small.convert("RGB")
+        pixels = opaque if len(opaque) >= 20 else list(small.getdata())
+    else:
+        pixels = list(small.getdata())
+        border = [pixels[x] for x in range(w)] + [pixels[(h - 1) * w + x] for x in range(w)]
+        border += [pixels[y * w] for y in range(h)] + [pixels[y * w + w - 1] for y in range(h)]
+        bg = tuple(sorted(c[i] for c in border)[len(border) // 2] for i in range(3))
+        near_bg = sum(1 for c in border if colors.color_distance(c, bg) < 12)
+        if near_bg / len(border) > 0.6:
+            fg = [c for c in pixels if colors.color_distance(c, bg) >= 12]
+            if len(fg) >= len(pixels) * 0.03:
+                pixels = fg
 
     sample = Image.new("RGB", (len(pixels), 1))
     sample.putdata(pixels)
@@ -249,7 +265,54 @@ def ingest(src: Path, images_dir: Path, sha256: Optional[str] = None) -> Process
     )
 
 
-def colors_of(images_dir: Path, stem: str) -> List[DominantColor]:
-    """Dominant colors of a stored photo, read from its (small) thumbnail."""
+def colors_of(images_dir: Path, stem: str, cutout: Optional[str] = None) -> List[DominantColor]:
+    """Dominant colors of a stored photo, read from its (small) thumbnail or cutout thumbnail."""
+    if cutout:
+        with Image.open(cutout_paths(images_dir, cutout)["thumb"]) as thumb:
+            return dominant_colors(thumb.convert("RGBA"))
     with Image.open(paths(images_dir, stem)["thumb"]) as thumb:
         return dominant_colors(thumb.convert("RGB"))
+
+
+# ---------- cutouts (background removed; the mask comes from app.services.cutout) ----------
+
+CUTOUT_MIN_SHARE = 0.02   # less than this is "no clear subject"
+CUTOUT_MAX_SHARE = 0.95   # more than this means nothing to remove (e.g. a fabric close-up)
+CUTOUT_PAD = 0.03         # margin around the subject, as a share of its longer side
+
+
+def subject_box(alpha: Image.Image) -> Optional[tuple]:
+    """Padded bounding box of the opaque part of a mask ("L"), or None if it isn't a usable subject."""
+    solid = alpha.point(lambda v: 255 if v >= 128 else 0)
+    share = solid.histogram()[255] / (alpha.width * alpha.height)
+    box = solid.getbbox()
+    if box is None or not CUTOUT_MIN_SHARE <= share <= CUTOUT_MAX_SHARE:
+        return None
+    left, top, right, bottom = box
+    pad = int(CUTOUT_PAD * max(right - left, bottom - top))
+    return (max(left - pad, 0), max(top - pad, 0),
+            min(right + pad, alpha.width), min(bottom + pad, alpha.height))
+
+
+def save_cutout(images_dir: Path, rgb: Image.Image, alpha: Image.Image) -> Optional[str]:
+    """Write the cutout (display + thumbnail, transparent WebP cropped to the subject).
+
+    Returns its new file name, or None when the mask has no usable subject.
+    """
+    box = subject_box(alpha)
+    if box is None:
+        return None
+    name = uuid.uuid4().hex
+    p = cutout_paths(images_dir, name)
+    p["display"].parent.mkdir(parents=True, exist_ok=True)
+    cut = rgb.convert("RGB")
+    cut.putalpha(alpha)
+    cut = cut.crop(box)
+    try:
+        cut.save(p["display"], "WEBP", quality=88, method=4)
+        cut.thumbnail((THUMB_MAX, THUMB_MAX), Image.LANCZOS)
+        cut.save(p["thumb"], "WEBP", quality=82, method=4)
+    except OSError:
+        delete_files(images_dir, "", "", cutout=name)
+        raise
+    return name

@@ -53,7 +53,7 @@ class Settings:
     def ensure_dirs(self) -> None:
         for d in (self.data_dir, self.staging_dir, self.tmp_dir, self.backup_dir):
             d.mkdir(parents=True, exist_ok=True)
-        for kind in ("orig", "display", "thumb"):
+        for kind in ("orig", "display", "thumb", "cutout"):
             (self.images_dir / kind).mkdir(parents=True, exist_ok=True)
 
 

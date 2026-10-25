@@ -137,6 +137,33 @@ def change_kind(item_id: int, photo_id: int, kind: str = Form(...),
     return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
 
 
+@router.post("/items/{item_id}/photos/{photo_id}/cutout")
+def cutout_switch(item_id: int, photo_id: int, show: str = Form("1"),
+                  session: Session = Depends(get_session)):
+    item = _item_or_404(session, item_id)
+    library.set_show_cutout(session, item, _photo_or_404(item, photo_id), show == "1")
+    return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
+
+
+@router.post("/items/{item_id}/photos/{photo_id}/cutout/retry")
+def cutout_retry(item_id: int, photo_id: int, session: Session = Depends(get_session)):
+    item = _item_or_404(session, item_id)
+    library.retry_cutout(session, _photo_or_404(item, photo_id))
+    return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
+
+
+@router.get("/items/{item_id}/photos/{photo_id}/cutout", response_class=HTMLResponse)
+def cutout_status(request: Request, item_id: int, photo_id: int,
+                  session: Session = Depends(get_session)):
+    """Polled by the detail page while the background is being removed; reloads it when done."""
+    item = _item_or_404(session, item_id)
+    photo = _photo_or_404(item, photo_id)
+    if photo.cutout_status == "pending":
+        return templates.TemplateResponse(request, "_cutout_pending.html",
+                                          {"item": item, "photo": photo})
+    return HTMLResponse("", headers={"HX-Refresh": "true"})
+
+
 @router.get("/items/{item_id}/photos/{photo_id}/delete", response_class=HTMLResponse)
 def delete_photo_confirm(request: Request, item_id: int, photo_id: int,
                          session: Session = Depends(get_session)):

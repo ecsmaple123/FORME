@@ -1,4 +1,6 @@
-"""Command line: python -m app {serve|migrate|backup|restore FILE|rebuild-images|cleanup}"""
+"""Command line: python -m app {serve|migrate|backup|restore FILE|rebuild-images|cleanup|
+cutout-worker|cutout-batch|cutouts [retry|redo]}"""
+import logging
 import sys
 import threading
 
@@ -38,6 +40,22 @@ def main(argv) -> int:
         from .services.library import cleanup_staging
 
         print(f"removed {cleanup_staging()} staged upload(s)")
+        return 0
+    if cmd in ("cutout-worker", "cutout-batch"):
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+        from . import worker
+
+        return worker.watch() if cmd == "cutout-worker" else worker.run_batch()
+    if cmd == "cutouts":
+        from . import ops
+
+        action = argv[2] if len(argv) > 2 else ""
+        if action not in ("", "retry", "redo"):
+            print("usage: python -m app cutouts [retry|redo]", file=sys.stderr)
+            return 2
+        if action:
+            print(f"queued {ops.requeue_cutouts(everything=action == 'redo')} photo(s)")
+        print(ops.cutout_summary())
         return 0
     print(__doc__, file=sys.stderr)
     return 2

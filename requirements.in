@@ -11,4 +11,8 @@ pillow==11.2.1
 httpx==0.28.1
 beautifulsoup4==4.15.0
 jinja2==3.1.6
+# background removal (only the cutout worker imports these). numpy 1.x: the piwheels OpenCV
+# armhf build is linked against it; needs the system libs in NEEDS_ADMIN.md A2
+numpy==1.26.4
+opencv-python-headless==4.11.0.86
 pytest==8.4.2

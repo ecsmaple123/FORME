@@ -3,6 +3,23 @@
 Claude has run none of these. Review each one, then run it as `pi`.
 The project does **not** need the docker group.
 
+## To do
+
+**A2. Libraries for background removal** (2026-10-25):
+```sh
+sudo apt-get install --no-install-recommends libopenblas0 libatlas3-base libavcodec58 libavformat58 libswscale5
+```
+- **Why:** the cutout worker uses numpy and OpenCV from piwheels (`numpy-1.26.4`,
+  `opencv_python_headless-4.11.0.86`, both `cp39 linux_armv7l`). Their wheels link against these system
+  libraries: OpenBLAS for numpy, ATLAS (`libcblas.so.3`) and the FFmpeg libraries for OpenCV. Without
+  them `import cv2` fails, and photos stay at "Removing background…".
+- **What it is:** 66 standard Bullseye/Raspbian packages (~69 MB download), libraries only. A simulated
+  install (`apt-get -s`) showed 0 removed, 0 upgraded. No services, no config, no network changes.
+- **Check:** `dpkg -l libopenblas0 libatlas3-base libavcodec58 | grep ^ii` should list all three. Then
+  tell Claude (or run `./wardrobe.sh restart`); the worker processes the waiting photos.
+- Claude tested the exact same packages without installing them (unpacked into the project folder),
+  so it's known to work: ~11 s per photo, peak 348 MB RSS, in a separate idle-priority process.
+
 ## Done
 
 **A1. Install `libopenjp2-7`** (OpenJPEG runtime library): installed by you on 2026-10-24 (2.4.0-3+deb11u3).

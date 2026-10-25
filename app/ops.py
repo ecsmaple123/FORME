@@ -2,7 +2,8 @@
 
 A backup is backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz (+ .sha256) holding:
   wardrobe.db     consistent snapshot via SQLite's backup API (safe while the app runs)
-  images/orig/    the original photos (display + thumbnails are rebuilt on restore)
+  images/orig/    the original photos (display + thumbnails are rebuilt on restore, and the
+                  cutout worker redoes the cutouts)
   manifest.json   item count, schema revision, git commit
 """
 import json
@@ -16,7 +17,7 @@ from pathlib import Path
 from typing import List
 
 from .config import PROJECT_DIR, get_settings
-from .services.images import render_derivatives, sha256_file
+from .services.images import cutout_paths, render_derivatives, sha256_file
 
 
 def _git_commit() -> str:
@@ -122,14 +123,26 @@ def restore(archive: str) -> Path:
 
 
 def rebuild_images() -> int:
-    """Regenerate display + thumbnail files from the originals."""
+    """Regenerate display + thumbnail files from the originals.
+
+    Cutouts aren't in backups: any whose files are missing are queued for the cutout worker.
+    """
     s = get_settings()
     s.ensure_dirs()
     con = sqlite3.connect(str(s.db_path))
     try:
         rows = con.execute("SELECT image_file, image_ext FROM item_photo").fetchall()
+        cutouts = con.execute(
+            "SELECT id, cutout_file FROM item_photo WHERE cutout_status = 'done'").fetchall()
+        missing = [pid for pid, name in cutouts
+                   if not name or not cutout_paths(s.images_dir, name)["display"].is_file()]
+        con.executemany("UPDATE item_photo SET cutout_status = 'pending' WHERE id = ?",
+                        [(pid,) for pid in missing])
+        con.commit()
     finally:
         con.close()
+    if missing:
+        print(f"queued {len(missing)} photo(s) for background removal")
     done = 0
     for stem, ext in rows:
         if (s.images_dir / "orig" / f"{stem}.{ext}").is_file():
@@ -138,3 +151,25 @@ def rebuild_images() -> int:
         else:
             print(f"warning: original missing for {stem}.{ext}")
     return done
+
+
+def requeue_cutouts(everything: bool = False) -> int:
+    """Queue photos for background removal: failed/none ones, or every photo (redo)."""
+    con = sqlite3.connect(str(get_settings().db_path), timeout=10)
+    try:
+        where = "" if everything else " WHERE cutout_status IN ('failed', 'none')"
+        n = con.execute("UPDATE item_photo SET cutout_status = 'pending'" + where).rowcount
+        con.commit()
+    finally:
+        con.close()
+    return n
+
+
+def cutout_summary() -> str:
+    con = sqlite3.connect(str(get_settings().db_path), timeout=10)
+    try:
+        rows = con.execute("SELECT cutout_status, count(*) FROM item_photo "
+                           "GROUP BY cutout_status ORDER BY cutout_status").fetchall()
+    finally:
+        con.close()
+    return "cutouts: " + (", ".join(f"{n} {status}" for status, n in rows) or "no photos")

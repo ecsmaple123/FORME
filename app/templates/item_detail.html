@@ -29,6 +29,27 @@
       <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
       {% endif %}
     </div>
+    <div class="photo-bar cutout-bar">
+      {% if shown.cutout_status == "pending" %}
+        {% with photo=shown %}{% include "_cutout_pending.html" %}{% endwith %}
+      {% elif shown.cutout_status == "done" %}
+      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cutout" class="inline-mini">
+        {% if shown.show_cutout %}
+        <input type="hidden" name="show" value="0">
+        <button type="submit" title="Show this photo as it was uploaded">Show with background</button>
+        {% else %}
+        <input type="hidden" name="show" value="1">
+        <button type="submit">Remove background</button>
+        {% endif %}
+      </form>
+      {% if shown.show_cutout %}<span class="muted small">Background removed automatically.</span>{% endif %}
+      {% else %}
+      <span class="muted small">{{ "Couldn't find a clear item to cut out." if shown.cutout_status == "none" else "Background removal failed." }}</span>
+      <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cutout/retry" class="inline-mini">
+        <button type="submit">Try again</button>
+      </form>
+      {% endif %}
+    </div>
     {% endif %}
 
     {% if item.photos|length > 1 %}

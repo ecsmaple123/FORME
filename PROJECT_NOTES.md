@@ -1,6 +1,6 @@
 # wardrobe: project notes
 
-Pi: `/home/claude/projects/wardrobe` (git repo, repo-local identity `claude <claude@pi>`).
+Pi: `/home/claude/projects/wardrobe` (git repo, repo-local identity Forest Li <GitHub noreply>).
 PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.md (deviations below).
 
 ## Status log
@@ -33,6 +33,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   now say FORME; the folder, service, commands and data keep the name `wardrobe`. Commits are now made as
   the user (Forest Li, GitHub noreply email). GitHub gets a cleaned copy built on the PC by
   `C:\pi-work\sync-repos.sh` (redaction + leak check); this repo is unchanged.
+- **2026-10-25: Background removal built** (user: "auto crops out only the clothing item part and
+  removes everything else ... displayed like that ... apply this to existing images"). Details in
+  "Background removal" below. User choices: the small model (u2netp, ~350 MB peak in a separate
+  process, over the 150 MB guide for the app itself, which stays under it) and installing the system
+  libraries with apt (NEEDS_ADMIN A2) rather than bundling them. Migration 0003 queues every existing
+  photo. Tested on a copy of the real data (10 photos, all "done", ~11 s each) with the libraries
+  unpacked into `.segtest/`; 59 tests pass. **Waiting on the user: A2.**
 - **Open:** URL import has only been tested against
   fixtures and non-store sites so far; the user should try real stores and send pages that fail.
 
@@ -71,6 +78,38 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
 - Limits: 12 photos per item, 6 per request, 20 MB per file, 60 MB per request (spooled to disk).
 - Migrations run on their own SQLite connection with foreign keys **off** (`migrations/env.py`), because
   batch table rebuilds would otherwise cascade-delete child rows. A `PRAGMA foreign_key_check` runs after.
+
+## Background removal (cutouts)
+- **What:** each photo gets a transparent WebP cutout cropped to the subject (`data/images/cutout/
+  <cutout_file>.webp` + `.thumb.webp`, new name on each redo). Templates show it via `media_url`
+  unless the photo's `show_cutout` is off. The original and its display/thumb files are never changed.
+  Item colors come from the cover's cutout when it's shown.
+- **States** (`item_photo.cutout_status`): pending → done | none (no subject between 2% and 95% of the
+  frame) | failed (exception, logged). "Try again" / `./wardrobe.sh cutouts retry` re-queue.
+- **Model:** U^2-Net-p (`models/u2netp.onnx`, 4.6 MB, Apache-2.0) from the rembg release, downloaded by
+  `wardrobe.sh` with a pinned SHA-256; not in git. Run with OpenCV DNN at 320x320, then refined at
+  full size (guided filter, contrast curve, backdrop-color cleanup, hole filling, 1-3 px trim, speck
+  removal); see `app/services/cutout.py`.
+- **Why this model:** rembg itself needs onnxruntime, which has no armhf wheel. Compared on the user's
+  photos (PC): `isnet-general-use` (178 MB) had crisper raw edges but ran 87 s/photo and 924 MB on the
+  Pi, and its input size is fixed at 1024; `silueta` is quantized and OpenCV can't load it. u2netp
+  with the refinement looked as good on these product shots.
+- **Gotchas found:**
+  - armhf OpenCV has **no NEON** (Baseline empty), so inference is ~10 s on 4 cores.
+  - OpenCV 4.x `net.forward()` with no name returns the **last** layer (U^2-Net's coarsest side
+    output, a blurry blob). Ask for the first output by name (OpenCV 5 on the PC hid this).
+  - piwheels `opencv-python-headless` 4.12 claims numpy>=2 but is linked against numpy 1.x; 4.11
+    is consistent (numpy 1.26.4). 4.10 and older have no armhf cp39 wheel: pip **compiles them from
+    source** (always use `--only-binary=:all:` when trying versions).
+- **Process:** `wardrobe-cutout.service` (Nice 19, CPU+IO idle class, LimitAS 800M) runs
+  `python -m app cutout-worker`: a stdlib-sqlite poll every 5 s. Work starts
+  `python -m app cutout-batch`, which loads the model, processes all pending photos one at a time, and
+  exits (peak 348 MB RSS / 530 MB virtual). If OpenCV or the model is missing it exits 3 and the
+  watcher waits 10 min. The detail page polls `/items/{id}/photos/{pid}/cutout` every 4 s while pending.
+- **Backups** don't include cutouts. After a restore, `rebuild-images` re-queues every photo whose
+  cutout file is missing.
+- **Limits:** a photo of someone wearing the item keeps the whole person. Garment-only segmentation
+  needs a clothing model (~176 MB `u2net_cloth_seg`), too slow and too big for this Pi.
 
 ## Memory (no memory cgroup on this Pi)
 Measured on the Pi, 2026-10-24:

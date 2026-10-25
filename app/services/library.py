@@ -184,10 +184,12 @@ def cleanup_staging(max_age: int = STAGING_MAX_AGE) -> int:
     # Image files that no item and no staged upload refers to (e.g. left by a crash).
     with Session(get_engine()) as session:
         keep = set(session.exec(select(ItemPhoto.image_file)).all())
+        keep |= {c for c in session.exec(select(ItemPhoto.cutout_file)).all() if c}
     keep |= {side.stem for side in settings.staging_dir.glob("*.json")}
-    for kind in ("orig", "display", "thumb"):
+    for kind in ("orig", "display", "thumb", "cutout"):
         for f in (settings.images_dir / kind).iterdir():
-            if f.stem not in keep and now - f.stat().st_mtime > max_age:
+            # name.ext and cutout thumbnails name.thumb.webp
+            if f.name.split(".")[0] not in keep and now - f.stat().st_mtime > max_age:
                 f.unlink(missing_ok=True)
                 removed += 1
     for tmp in settings.tmp_dir.glob("*"):
@@ -353,12 +355,13 @@ def _renumber(ordered: List[ItemPhoto]) -> None:
 
 
 def _recolor(session: Session, item: Item) -> None:
-    """Item colors always come from the cover photo."""
+    """Item colors always come from the cover photo (its cutout, when that is shown)."""
     item.colors = []
     session.flush()
     cover = item.cover
     if cover:
-        item.colors = _color_rows(images.colors_of(get_settings().images_dir, cover.image_file))
+        item.colors = _color_rows(images.colors_of(get_settings().images_dir, cover.image_file,
+                                                   cover.cutout_shown))
 
 
 def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:
@@ -377,11 +380,29 @@ def set_kind(session: Session, photo: ItemPhoto, kind: str) -> None:
     session.commit()
 
 
+def set_show_cutout(session: Session, item: Item, photo: ItemPhoto, show: bool) -> None:
+    """Switch between the cutout and the photo with its background."""
+    photo.show_cutout = show
+    session.add(photo)
+    session.flush()
+    if item.cover is not None and item.cover.id == photo.id:
+        _recolor(session, item)
+    session.commit()
+
+
+def retry_cutout(session: Session, photo: ItemPhoto) -> None:
+    """Queue the photo for background removal again (the worker picks it up within seconds)."""
+    photo.cutout_status = "pending"
+    photo.show_cutout = True
+    session.add(photo)
+    session.commit()
+
+
 def delete_photo(session: Session, item: Item, photo: ItemPhoto) -> None:
     if len(item.photos) <= 1:
         raise UserError("This is the item's only photo. Add another one first, or delete the item.")
     was_cover = item.cover is not None and item.cover.id == photo.id
-    stem, ext = photo.image_file, photo.image_ext
+    stem, ext, cutout = photo.image_file, photo.image_ext, photo.cutout_file
     item.photos = [p for p in item.photos if p.id != photo.id]  # delete-orphan removes the row
     _renumber(item.photos)
     session.flush()
@@ -390,7 +411,7 @@ def delete_photo(session: Session, item: Item, photo: ItemPhoto) -> None:
     item.updated_at = utcnow()
     session.add(item)
     session.commit()
-    images.delete_files(get_settings().images_dir, stem, ext)
+    images.delete_files(get_settings().images_dir, stem, ext, cutout)
 
 
 def get_photo(item: Item, photo_id: int) -> Optional[ItemPhoto]:
@@ -408,15 +429,15 @@ def update_item(session: Session, item: Item, data: ItemData) -> Item:
 
 
 def delete_item(session: Session, item: Item) -> None:
-    files = [(p.image_file, p.image_ext) for p in item.photos]
+    files = [(p.image_file, p.image_ext, p.cutout_file) for p in item.photos]
     for link in session.exec(select(OutfitItem).where(OutfitItem.item_id == item.id)).all():
         session.delete(link)
     session.delete(item)
     session.flush()
     _drop_unused_tags(session)
     session.commit()
-    for stem, ext in files:
-        images.delete_files(get_settings().images_dir, stem, ext)
+    for stem, ext, cutout in files:
+        images.delete_files(get_settings().images_dir, stem, ext, cutout)
 
 
 def get_item(session: Session, item_id: int) -> Optional[Item]:

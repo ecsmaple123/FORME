@@ -8,11 +8,18 @@ from .services.library import MAX_PER_REQUEST, SORTS
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
-def media_url(obj, kind: str = "thumb") -> str:
-    """URL of a photo's file; an Item means its cover photo."""
+def media_url(obj, kind: str = "thumb", plain: bool = False) -> str:
+    """URL of a photo's file; an Item means its cover photo.
+
+    Display and thumbnail use the cutout (background removed) when there is one and it's switched
+    on, unless plain=True. "orig" is always the photo as uploaded.
+    """
     photo = obj.cover if isinstance(obj, Item) else obj
     if photo is None:
         return "/static/no-photo.svg"
+    cutout = None if plain or kind == "orig" else photo.cutout_shown
+    if cutout:
+        return f"/media/cutout/{cutout}.webp" if kind == "display" else f"/media/cutout/{cutout}.thumb.webp"
     ext = {"thumb": "webp", "display": "jpg", "orig": photo.image_ext}[kind]
     return f"/media/{kind}/{photo.image_file}.{ext}"
 

@@ -120,8 +120,23 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   list. with option feedback"). On /stylist a dislike swaps the card for `_dismissed.html` ("Removed:
   title", Undo, optional "What didn't work?" note); `stylist.recent` skips disliked suggestions, which
   stay in the memory. Home's daily pick is unchanged (👎 there keeps the card with its note box). 104 tests.
+- **2026-10-25: Outside access** (user: "I want anyone outside of my home internet be able to access it
+  as long as they have a password"; chose a random trycloudflare address for now and one shared
+  password). Login gate `LoginRequired` (main.py) + `services/auth.py` + `routes/auth.py`: home =
+  WARDROBE_HOME_NET (192.168.0.0/24) and not via the tunnel (Cf-* headers) and not the Pi itself; else
+  every path but /login, /static, /healthz needs the cookie `forme_auth` (30 days, HMAC over expiry +
+  password hash, HttpOnly, SameSite=Lax, Secure over https). PBKDF2-SHA256 hash and the signing secret
+  live in the `setting` table (`auth_password`, `auth_secret`), so they're in backups. Wrong
+  passwords: 5 per address / 20 overall per 15 min (in memory). No password = outside refused.
+  Settings > Outside access (set/change; remove only at home; log out away from home; shows the
+  public address). CLI `./wardrobe.sh password [set|remove]`. VPN visitors (10.88.x) log in too.
+  Tunnel: `./wardrobe.sh tunnel on|off|status`, unit `wardrobe-tunnel.service` (opt-in, not in
+  install_unit), cloudflared 2026.10.3 armhf in `tunnel/` (git-ignored, sha256-checked), `--protocol
+  http2` (TCP only, outgoing), metrics 127.0.0.1:8487 (`/quicktunnel` gives the hostname). 115 tests.
 
 ## Key facts
+- **Outside access:** `./wardrobe.sh tunnel status` prints the current https://…trycloudflare.com
+  address (changes on every tunnel restart). cloudflared metrics on 127.0.0.1:8487 (loopback only).
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
 - **Backups:** daily via `wardrobe-backup.timer` (04:45) → `wardrobe-backup.service` → `python -m app backup`.
 - **Process:** systemd user unit `~/.config/systemd/user/wardrobe.service` (generated from

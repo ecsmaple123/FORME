@@ -1,5 +1,5 @@
 """Command line: python -m app {serve|migrate|backup|restore FILE|rebuild-images|cleanup|
-cutout-worker|cutout-batch|cutouts [retry|redo]}"""
+cutout-worker|cutout-batch|cutouts [retry|redo]|password [set|remove]}"""
 import logging
 import sys
 import threading
@@ -57,6 +57,26 @@ def main(argv) -> int:
             print(f"queued {ops.requeue_cutouts(everything=action == 'redo')} photo(s)")
         print(ops.cutout_summary())
         return 0
+    if cmd == "password":
+        # outside access: no argument says whether a password is set (exit 1 if not)
+        from .services import auth
+
+        action = argv[2] if len(argv) > 2 else ""
+        if action == "set":
+            import getpass
+
+            try:
+                auth.set_password(getpass.getpass("New password: "), getpass.getpass("Again: "))
+            except auth.AuthError as exc:
+                print(exc, file=sys.stderr)
+                return 1
+        elif action == "remove":
+            auth.remove_password()
+        elif action:
+            print("usage: python -m app password [set|remove]", file=sys.stderr)
+            return 2
+        print("password: set" if auth.has_password() else "password: not set (no outside access)")
+        return 0 if auth.has_password() else 1
     print(__doc__, file=sys.stderr)
     return 2
 

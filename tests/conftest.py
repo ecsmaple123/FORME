@@ -7,6 +7,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 FIXTURES = Path(__file__).parent / "fixtures"
+HOME_ADDRESS = "192.168.0.50"
 
 
 @pytest.fixture
@@ -18,9 +19,12 @@ def settings(tmp_path, monkeypatch):
     from app.config import get_settings
     from app.db import migrate, reset_engine
 
+    from app.services import auth
+
     get_settings.cache_clear()
     reset_engine()
     migrate()
+    auth._failures.clear()
     yield get_settings()
     reset_engine()
     get_settings.cache_clear()
@@ -32,7 +36,7 @@ def client(settings):
 
     from app.main import create_app
 
-    with TestClient(create_app()) as c:
+    with TestClient(create_app(), client=(HOME_ADDRESS, 50000)) as c:  # at home: no login
         yield c
 
 

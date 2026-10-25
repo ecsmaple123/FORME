@@ -12,6 +12,7 @@
 </head>
 <body>
   {% set path = request.url.path %}
+  {% block header %}
   <header class="topbar">
     <a class="brand" href="/">FORME</a>
     {# Centred in the header; a tab bar at the bottom of the screen on phones. #}
@@ -31,6 +32,7 @@
       <a class="button primary" href="/add">+ Add<span class="wide-only"> item</span></a>
     </div>
   </header>
+  {% endblock %}
   <main>
     {% block content %}{% endblock %}
   </main>

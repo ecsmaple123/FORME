@@ -490,3 +490,9 @@ form.htmx-request .ask-label { display: none; }
   .picks-head { flex-direction: column; align-items: stretch; }
   .picks-head .pick-actions { justify-content: flex-start; }
 }
+
+/* ---------- login (outside the home network) ---------- */
+.login-top { display: flex; justify-content: center; }
+.login { max-width: 380px; margin: 3rem auto 0; }
+.login .page-title { margin: 0; }
+.access-form { max-width: 420px; }

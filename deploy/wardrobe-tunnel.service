@@ -1,0 +1,20 @@
+# systemd *user* unit, installed by ./wardrobe.sh tunnel on (@DIR@, @URL@ are filled in).
+# A Cloudflare quick tunnel: cloudflared makes outgoing connections to Cloudflare (TCP, http2), which
+# hands visits to https://<random>.trycloudflare.com down them to the app. Nothing is opened on the
+# router or the Pi's firewall. The address changes every time this restarts; the app reads it from
+# the metrics server on 127.0.0.1:8487 (Settings > Outside access). Off: ./wardrobe.sh tunnel off
+[Unit]
+Description=FORME public address (Cloudflare quick tunnel)
+After=wardrobe.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=@DIR@
+ExecStart=@DIR@/tunnel/cloudflared tunnel --no-autoupdate --protocol http2 --edge-ip-version 4 --metrics 127.0.0.1:8487 --url @URL@
+Restart=on-failure
+RestartSec=30
+Nice=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{# Shown outside the home network until the right password is given (routes/auth.py). #}
+{% block title %}Log in · FORME{% endblock %}
+{% block header %}
+<header class="topbar login-top"><span class="brand">FORME</span></header>
+{% endblock %}
+{% block content %}
+<section class="panel stack login">
+  <h1 class="page-title">Welcome back</h1>
+  {% if ready %}
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password" required autofocus></label>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    <button class="primary" type="submit">Log in</button>
+  </form>
+  {% else %}
+  <p>FORME isn't open outside its home network yet. Its owner can set a password in Settings, at home.</p>
+  {% endif %}
+</section>
+{% endblock %}

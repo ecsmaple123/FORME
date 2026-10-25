@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Control script for the wardrobe app (systemd user service). Run on the Pi.
 #   ./wardrobe.sh start|stop|restart|status|logs [-f]|cutout-logs [-f]|cutouts [retry|redo]|
-#                 backup|restore FILE|update|rebuild-images|test|remove
+#                 backup|restore FILE|update|rebuild-images|test|remove|
+#                 password [set|remove]|tunnel on|off|status
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
@@ -17,6 +18,11 @@ CUTOUT_LIMIT_AS="${CUTOUT_LIMIT_AS:-800M}"  # a batch measured 530 MB virtual, 3
 MODEL=models/u2netp.onnx
 MODEL_URL=https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx
 MODEL_SHA256=309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
+# Public address (opt-in): Cloudflare's tunnel client, 32-bit ARM build, from its GitHub release.
+TUNNEL=wardrobe-tunnel.service
+CLOUDFLARED=tunnel/cloudflared
+CLOUDFLARED_URL=https://github.com/cloudflare/cloudflared/releases/download/2026.10.3/cloudflared-linux-armhf
+CLOUDFLARED_SHA256=458928ef2729ad71ebf7c88c289f9ecb2ac8bc6810a3bd4d70778592b9b4268b
 
 url() { "$PY" -c 'from app.config import get_settings as g; s=g(); print(f"http://{s.host}:{s.port}")'; }
 
@@ -49,6 +55,21 @@ install_unit() {
   [[ $changed == 1 ]] && systemctl --user daemon-reload
   systemctl --user enable -q "$UNIT" "$CUTOUT"
   systemctl --user enable -q --now "$TIMER"
+}
+
+fetch_cloudflared() {
+  [[ -x "$CLOUDFLARED" ]] && return 0
+  mkdir -p tunnel
+  echo "downloading cloudflared (37 MB)…"
+  curl -fsSL --retry 3 -o "$CLOUDFLARED.part" "$CLOUDFLARED_URL"
+  if [[ "$(sha256sum "$CLOUDFLARED.part" | cut -d' ' -f1)" != "$CLOUDFLARED_SHA256" ]]; then
+    rm -f "$CLOUDFLARED.part"; echo "cloudflared checksum mismatch; not installed" >&2; return 1
+  fi
+  chmod +x "$CLOUDFLARED.part" && mv "$CLOUDFLARED.part" "$CLOUDFLARED"
+}
+
+public_address() {
+  curl -fsS -m 2 http://127.0.0.1:8487/quicktunnel 2>/dev/null     | "$PY" -c 'import json,sys; h=json.load(sys.stdin).get("hostname"); print("https://"+h if h else "")'     2>/dev/null || true
 }
 
 wait_healthy() {
@@ -114,9 +135,31 @@ case "${1:-}" in
     "$PY" -m app rebuild-images ;;
   test)
     "$PY" -m pytest -q tests ;;
+  password)
+    "$PY" -m app password ${2:-} || true ;;
+  tunnel)
+    case "${2:-status}" in
+      on)
+        "$PY" -m app password >/dev/null || { echo "set a password first (Settings > Outside access, or ./wardrobe.sh password set)" >&2; exit 1; }
+        fetch_cloudflared
+        mkdir -p "$UNIT_DIR"
+        sed -e "s|@DIR@|$PWD|g" -e "s|@URL@|$(url)|g" "deploy/$TUNNEL" > "$UNIT_DIR/$TUNNEL"
+        systemctl --user daemon-reload
+        systemctl --user enable -q "$TUNNEL"
+        systemctl --user restart "$TUNNEL"
+        for _ in $(seq 1 30); do a=$(public_address); [[ -n "$a" ]] && break; sleep 1; done
+        echo "public address: ${a:-not ready yet; try ./wardrobe.sh tunnel status in a minute}" ;;
+      off)
+        systemctl --user disable --now "$TUNNEL" 2>/dev/null || true
+        echo "tunnel off: FORME is only reachable at home" ;;
+      status)
+        echo "tunnel: $(systemctl --user is-active "$TUNNEL" 2>/dev/null || true)"
+        a=$(public_address); echo "public address: ${a:-none}" ;;
+      *) echo "usage: $0 tunnel on|off|status" >&2; exit 2 ;;
+    esac ;;
   remove)
-    systemctl --user disable --now "$TIMER" "$CUTOUT" "$UNIT" 2>/dev/null || true
-    rm -f "$UNIT_DST" "$UNIT_DIR/$CUTOUT" "$UNIT_DIR/wardrobe-backup.service" "$UNIT_DIR/$TIMER"
+    systemctl --user disable --now "$TUNNEL" "$TIMER" "$CUTOUT" "$UNIT" 2>/dev/null || true
+    rm -f "$UNIT_DST" "$UNIT_DIR/$CUTOUT" "$UNIT_DIR/wardrobe-backup.service" "$UNIT_DIR/$TIMER" "$UNIT_DIR/$TUNNEL"
     systemctl --user daemon-reload
     echo "services + backup timer removed. Data, backups and code are still in $PWD."
     echo "To delete everything: rm -rf $PWD" ;;

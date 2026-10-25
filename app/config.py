@@ -31,6 +31,8 @@ class Settings:
     max_upload_mb: int
     gemini_api_key: str
     gemini_model: str
+    home_net: str        # visits from here need no login (but never through the tunnel)
+    tunnel_metrics: str  # cloudflared's metrics server, which knows the public address
 
     @property
     def db_path(self) -> Path:
@@ -72,4 +74,6 @@ def get_settings() -> Settings:
         max_upload_mb=int(env.get("WARDROBE_MAX_UPLOAD_MB", "20")),
         gemini_api_key=env.get("GEMINI_API_KEY", ""),
         gemini_model=env.get("GEMINI_MODEL", "") or DEFAULT_GEMINI_MODEL,
+        home_net=env.get("WARDROBE_HOME_NET", "192.168.0.0/24"),
+        tunnel_metrics=env.get("WARDROBE_TUNNEL_METRICS", "127.0.0.1:8487"),
     )

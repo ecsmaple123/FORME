@@ -10,3 +10,4 @@ data.restoring/
 models/*.onnx
 models/*.part
 .segtest/
+tunnel/

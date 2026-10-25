@@ -1,15 +1,18 @@
-# wardrobe
+# FORME
 
-A small wardrobe tracker for the home Pi: photos of your clothes, categories, colors, search.
+A self-hosted wardrobe tracker for a Raspberry Pi. Photograph or import your clothes, give each item
+several photos, and browse by category, color, season and tag. Add items from a store page with a
+link or a one-click bookmark.
 FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker, no build step.
+(The folder, service and commands are still called `wardrobe`.)
 
 - **URL:** http://192.168.0.129:8484. It's reachable on the LAN and over the VPN, and has no login.
 - **Pi folder:** `/home/claude/projects/wardrobe` (git repo). **PC mirror:** `C:\pi-work\wardrobe`.
 - Background, decisions and status log: `PROJECT_NOTES.md`. Original plan: `PLAN.md`.
 
 ## Using it
-- **"Add to wardrobe" bookmark** (best for stores that block links, e.g. Loro Piana): on *Add item*,
-  drag the **+ Add to wardrobe** button to your bookmarks bar (Ctrl+Shift+B shows the bar). On a product
+- **"Add to FORME" bookmark** (best for stores that block links, e.g. Loro Piana): on *Add item*,
+  drag the **+ Add to FORME** button to your bookmarks bar (Ctrl+Shift+B shows the bar). On a product
   page, click the bookmark. It runs in your own browser on the page you have open, collects the product
   images, name and brand, and opens the app so you can tick which photos to keep. It sends nothing
   anywhere except to this app. If the store's image server refuses the Pi, upload the photo instead.

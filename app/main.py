@@ -42,7 +42,7 @@ async def lifespan(_app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.ensure_dirs()
-    app = FastAPI(title="Wardrobe", lifespan=lifespan, docs_url=None, redoc_url=None,
+    app = FastAPI(title="FORME", lifespan=lifespan, docs_url=None, redoc_url=None,
                   openapi_url=None)
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
     app.mount("/media", StaticFiles(directory=settings.images_dir), name="media")

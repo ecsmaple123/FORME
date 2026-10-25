@@ -1,4 +1,4 @@
-"""Builds the "Add to wardrobe" bookmark (a javascript: URL) from app/bookmarklet.js.
+"""Builds the "Add to FORME" bookmark (a javascript: URL) from app/bookmarklet.js.
 
 The script runs in the user's own browser on a product page they already have open: it only
 reads that page (image links, name, brand) and opens /add/bookmark on this app with them.

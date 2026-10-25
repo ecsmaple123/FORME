@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ "Edit" if item else "New item" }} · Wardrobe{% endblock %}
+{% block title %}{{ "Edit" if item else "New item" }} · FORME{% endblock %}
 {% block content %}
 <h1>{{ "Edit " ~ item.name if item else "New item" }}</h1>
 {% if errors %}<div class="error" role="alert">Please fix the highlighted fields.</div>{% endif %}

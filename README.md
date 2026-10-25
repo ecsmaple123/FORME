@@ -37,11 +37,16 @@ FastAPI + SQLite + Jinja/HTMX, running as a systemd **user** service. No Docker,
   use the picker to change it.
 - **Home:** a greeting, today's weather (once a location is set) with a what-to-wear hint, four
   featured picks (random for now, the same all day; **Shuffle** for new ones) and recently added items.
-- **Settings** (gear icon): your name for the greeting, **Appearance** (System / Light / Dark),
+- **Settings** (gear icon): categories, your name for the greeting, **Appearance** (System / Light / Dark),
   °C or °F, and the weather location (search a town, click the right one). Weather comes from
   Open-Meteo (free, no account); only the location's coordinates are sent.
-- **Browse** (`/browse`): category chips, search (name, brand, tag) and sort.
-- **Categories:** rename, reorder, add, and delete when empty.
+- **Closet** (`/closet`, was Browse): items grouped by category in your order, with category chips,
+  search (name, fabric, brand, tag) and a sort that applies within each category. Cards show the name
+  and fabric.
+- **Categories** (in Settings): rename, move up/down (this is the closet order), add, and delete when
+  empty. While adding or editing an item, pick **+ New category…** in the Category list to create one.
+- **Fabric:** its own field (with suggestions). When an item comes from a store link or the bookmark,
+  fabric words are taken out of the name ("Cashmere Overcoat" → name *Overcoat*, fabric *Cashmere*).
 
 ## Control (on the Pi, in the project folder)
 | command | what it does |

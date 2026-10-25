@@ -55,6 +55,15 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   Lesson: copying templates into the Pi tree before restarting broke the live app for a few minutes
   (old code + new templates → 500). Test in a separate checkout or restart immediately.
 
+- **2026-10-25: Closet, categories in Settings, fabric** (user: "Move categories to ... the settings page,
+  ... create a new category during adding ... Change Browse to Closet, sort items by category ... choose the
+  ordering from settings ... Remove brand from the preview cards. Add fabric ... auto update fabric from
+  existing names then remove it from the names ... Add fabric to the card"). Commit 1f5d98f, 79 tests.
+  Migration 0005 ran live after backup `backups/wardrobe-20261025-024455.tar.gz`; 7 of 10 names changed
+  (e.g. "Cashmere Corduroy Peacoat" → Peacoat + Cashmere Corduroy; downgrade puts them back). Tested first in a
+  separate checkout (`~/projects/wardrobe-next`, removed) with a preview on a copy of the real data.
+  Brand stays on the item page, form and search; only the cards dropped it.
+
 ## Key facts
 - **URL:** `http://192.168.0.129:8484`. TCP 8484, bound to 192.168.0.129 only. No firewall changes.
 - **Backups:** daily via `wardrobe-backup.timer` (04:45) → `wardrobe-backup.service` → `python -m app backup`.
@@ -146,7 +155,7 @@ Measured on the Pi, 2026-10-24:
   GIF/BMP/TIFF are re-encoded to JPEG.
 - The pixel caps above (the plan said 40 MP for everything).
 - `og:site_name` is **not** used as the brand: it's the store's name (e.g. "Zalando"), not the brand.
-- Routes are in `app/routes/{items,add,categories}.py`. The domain logic is in `app/services/library.py`.
+- Routes are in `app/routes/{items,add,categories,settings,home}.py` (categories has no page of its own; Settings renders it). The domain logic is in `app/services/library.py`.
 - Image downloads ask CDNs for JPEG first (cheap to decode), and the store preview image is loaded
   directly from the store in your browser for the confirmation step only. It's saved on the Pi when
   you continue.
@@ -180,7 +189,7 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
 - Templates are auto-escaped; the source URL must be http(s), so there are no `javascript:` links.
 
 ## Home, weather, settings
-- `/` = home (`app/routes/home.py`); browse moved to `/browse`. `/weather` and `/picks?shuffle=1`
+- `/` = home (`app/routes/home.py`); the item list is `/closet` (`/browse` and `/categories` 301-redirect). `/weather` and `/picks?shuffle=1`
   are HTMX partials (the weather card loads after the page, so a slow API never delays it).
 - **Weather:** `app/services/weather.py`, Open-Meteo geocoding + forecast (free, no key, HTTPS outbound
   from the Pi; only the coordinates are sent). In-process cache: 30 min, failures 5 min. WMO code →
@@ -195,6 +204,14 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
 - **Featured picks:** `app/services/featured.py` `pick(session, day, weather=None, ...)`: random, seeded by
   date (same picks all day), cutout items first. The `weather` argument is the hook for the planned
   AI recommender (weather + style); the home route doesn't pass weather yet.
+
+## Closet, categories, fabric
+- Closet groups with `library.group_by_category` in `Category.sort_order` order; `move_category` swaps
+  neighbours and renumbers 10, 20, …; new categories go last. With a category chip selected there is no grouping.
+- Item form: category value `new` + `new_category` text → `find_or_add_category` (case-insensitive reuse,
+  flushed only, so a form with other errors creates nothing).
+- `app/services/fabric.py`: word list (garment-ish words like oxford/knit/mesh deliberately left out),
+  `split_name` never empties a name. Used by migration 0005 and the add flow's name prefill.
 
 ## Extension points (not built)
 - **AI picks:** replace the body of `featured.pick` (see above); route and templates already show `Picks.reason`.

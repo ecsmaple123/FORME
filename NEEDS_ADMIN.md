@@ -3,9 +3,9 @@
 Claude has run none of these. Review each one, then run it as `pi`.
 The project does **not** need the docker group.
 
-## To do
+## Done (A2)
 
-**A2. Libraries for background removal** (2026-10-25):
+**A2. Libraries for background removal**: installed by you on 2026-10-25.
 ```sh
 sudo apt-get install --no-install-recommends libopenblas0 libatlas3-base libavcodec58 libavformat58 libswscale5
 ```

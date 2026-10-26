@@ -12,6 +12,9 @@ The model sees the photo at 320x320. The mask is then refined at full size:
      pixels of the backdrop's color become clear, e.g. the gap between a sleeve and the body
   4. hole filling: unsure areas enclosed by the subject (e.g. a coat's shiny lining) become solid;
      real gaps (mask ~0, or backdrop-colored) stay transparent
+  4b. floor patches (photos on a floor, bed or table, i.e. no even backdrop): large areas the model
+     kept that are clearly the floor's colors rather than the item's are removed, e.g. the floor
+     between the legs of trousers laid flat
   5. a 1-3 px trim of the edge, which removes the last light fringe, and removal of tiny specks
 """
 from pathlib import Path
@@ -59,6 +62,66 @@ CONFIDENT = 0.9           # model output above this is always kept (e.g. white s
 MIN_PART = 0.002          # solid specks smaller than this share of the photo are dropped
 
 
+FLOOR_SIDE = 400          # floor patches are found on a copy this size (memory, speed)
+FLOOR_BAND = 0.04         # the border band (share of the shorter side) that shows the floor
+FLOOR_COLORS = 4          # color clusters for the floor and for the item each
+FLOOR_MARGIN = 12.0       # Lab distance a pixel must be closer to the floor than to the item
+FLOOR_MIN_PATCH = 0.004   # floor-colored areas smaller than this share of the photo stay (shading)
+FLOOR_MAX_SHARE = 0.35    # if more of the item than this looks like floor, the colors are too alike
+
+
+def _clusters(lab: np.ndarray, k: int) -> np.ndarray:
+    data = lab[np.random.default_rng(0).permutation(len(lab))[:8000]].astype(np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+    _c, _l, centers = cv2.kmeans(data, min(k, len(data)), None, criteria, 2, cv2.KMEANS_PP_CENTERS)
+    return centers
+
+
+def _nearest(lab: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    return np.min(np.linalg.norm(lab[:, None, :] - centers[None, :, :], axis=2), axis=1)
+
+
+def floor_patches(rgb: np.ndarray, a: np.ndarray) -> np.ndarray:
+    """Full-size bool mask of large kept areas that have the floor's colors, not the item's."""
+    h, w = a.shape
+    scale = min(1.0, FLOOR_SIDE / max(h, w))
+    sw, sh = max(1, round(w * scale)), max(1, round(h * scale))
+    lab = cv2.cvtColor(cv2.resize(rgb, (sw, sh), interpolation=cv2.INTER_AREA),
+                       cv2.COLOR_RGB2LAB).astype(np.float32)
+    small = cv2.resize(a, (sw, sh), interpolation=cv2.INTER_AREA)
+    nothing = np.zeros((h, w), bool)
+    band = max(2, int(min(sw, sh) * FLOOR_BAND))
+    edge = np.zeros((sh, sw), bool)
+    edge[:band], edge[-band:], edge[:, :band], edge[:, -band:] = True, True, True, True
+    floor = lab[edge & (small < 0.1)]
+    kept = small > 0.5
+    core = cv2.erode(kept.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+    if len(floor) < 200 or core.sum() < 200:
+        return nothing
+    floor_c, item_c = _clusters(floor, FLOOR_COLORS), _clusters(lab[core], FLOOR_COLORS)
+    # what the model kept includes the patches themselves: the item's own colors are the ones
+    # unlike any floor color (none left = the item is the floor's color, so leave it alone)
+    apart = _nearest(item_c, floor_c)
+    item_c, apart = item_c[apart > 2 * FLOOR_MARGIN], apart[apart > 2 * FLOOR_MARGIN]
+    # an item color only somewhat unlike the floor (lit olive on a grey-brown floor) means the two
+    # can't be told apart reliably: removing patches would eat into the item
+    if not len(item_c) or apart.min() < 3 * FLOOR_MARGIN:
+        return nothing
+    pts = lab[kept]
+    like_floor = np.zeros((sh, sw), bool)
+    like_floor[kept] = _nearest(pts, floor_c) + FLOOR_MARGIN < _nearest(pts, item_c)
+    like_floor = cv2.morphologyEx(like_floor.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, labels, stats, _c = cv2.connectedComponentsWithStats(like_floor, connectivity=8)
+    big = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] >= FLOOR_MIN_PATCH * sw * sh]
+    if not big:
+        return nothing
+    patches = np.isin(labels, big)
+    if patches.sum() > FLOOR_MAX_SHARE * kept.sum():
+        return nothing
+    patches = cv2.dilate(patches.astype(np.uint8), np.ones((3, 3), np.uint8))
+    return cv2.resize(patches, (w, h), interpolation=cv2.INTER_NEAREST).astype(bool)
+
+
 def refine(rgb: np.ndarray, mask: np.ndarray, backdrop_cleanup: bool = True) -> np.ndarray:
     """Full-size soft mask (float32 0..1) -> cleaned alpha (float32 0..1)."""
     h, w = mask.shape
@@ -82,6 +145,8 @@ def refine(rgb: np.ndarray, mask: np.ndarray, backdrop_cleanup: bool = True) -> 
     edge_labels = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
     enclosed = (open_area == 1) & ~np.isin(labels, edge_labels)
     a[enclosed & (mask > 0.08) & unlike_backdrop] = 1.0
+    if bg is None and backdrop_cleanup:
+        a[floor_patches(rgb, a)] = 0.0
 
     a = _curve(a, 0.35, 0.75)
     k = max(3, max(h, w) // 500) | 1

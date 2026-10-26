@@ -387,7 +387,7 @@ def _recolor(session: Session, item: Item) -> None:
     """
     old = item.colors[0].hex if item.colors else ""
     auto = not item.color_hex or (item.color_hex == old
-                                  and item.color_name == colors.nearest_color_name(old))
+                                  and item.color_name.lower() == colors.nearest_color_name(old).lower())
     item.colors = []
     session.flush()
     cover = item.cover

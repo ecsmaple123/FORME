@@ -51,7 +51,7 @@ def test_create_with_several_photos_and_kinds(client):
     assert item.cover.id == item.photos[0].id
     # colors come from the cover (navy), not the second photo
     from app.services.colors import nearest_color_name
-    assert nearest_color_name(item.colors[0].hex) == "navy"
+    assert nearest_color_name(item.colors[0].hex) == "Navy"
     r = client.get("/closet", headers={"HX-Request": "true"})
     assert 'class="count-badge"' in r.text
 
@@ -72,7 +72,7 @@ def test_add_photo_set_cover_delete(client, settings):
     item = _item(item_id)
     assert item.cover.id == second.id and [p.position for p in item.photos] == [0, 1]
     from app.services.colors import nearest_color_name
-    assert nearest_color_name(item.colors[0].hex) == "red"  # recolored from the new cover
+    assert nearest_color_name(item.colors[0].hex) == "Red"  # recolored from the new cover
 
     r = client.get(f"/items/{item_id}/photos/{second.id}/delete")
     assert "It's the cover" in r.text and len(_item(item_id).photos) == 2  # confirm only
@@ -81,7 +81,7 @@ def test_add_photo_set_cover_delete(client, settings):
     assert r.status_code == 303
     item = _item(item_id)
     assert [p.id for p in item.photos] == [first.id] and item.photos[0].position == 0
-    assert nearest_color_name(item.colors[0].hex) == "navy"
+    assert nearest_color_name(item.colors[0].hex) == "Navy"
     assert not any(f.exists() for f in files.values())
 
     r = client.post(f"/items/{item_id}/photos/{first.id}/delete")

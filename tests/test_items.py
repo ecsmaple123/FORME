@@ -49,7 +49,7 @@ def test_categories_seeded(client):
 def test_upload_prefills_color_and_makes_files(client, settings):
     r, token = _upload(client)
     assert r.status_code == 200
-    assert 'value="navy"' in r.text  # dominant color named, white background ignored
+    assert 'value="Navy"' in r.text  # dominant color named, white background ignored
     p = paths(settings.images_dir, token, "jpg")
     assert all(f.is_file() for f in p.values())
     with Image.open(p["thumb"]) as t:
@@ -62,7 +62,7 @@ def test_add_edit_delete(client, settings):
     assert item.name == "Navy oxford shirt" and item.brand == "Uniqlo"
     assert item.seasons == "spring,autumn"
     assert sorted(t.name for t in item.tags) == ["cotton", "work"]
-    assert item.color_name == "navy" and item.color_hex.startswith("#")
+    assert item.color_name == "Navy" and item.color_hex.startswith("#")
     assert 1 <= len(item.colors) <= 5 and item.colors[0].rank == 0
     assert item.created_at is not None
 
@@ -75,7 +75,7 @@ def test_add_edit_delete(client, settings):
     assert r.status_code == 303
     item = _item(item_id)
     assert item.name == "Oxford shirt" and item.color_hex == "#ffffff"
-    assert item.color_name == "white" and item.seasons == "summer" and item.brand == ""
+    assert item.color_name == "White" and item.seasons == "summer" and item.brand == ""
     assert [t.name for t in item.tags] == ["office"]
     with Session(get_engine()) as s:  # tags no longer used are cleaned up
         assert sorted(t.name for t in s.exec(select(Tag)).all()) == ["office"]
@@ -154,7 +154,7 @@ def test_transparent_png(client, settings):
     data = make_image(size=(800, 800), fmt="PNG", mode="RGBA", garment=(198, 42, 42),
                       background=(0, 0, 0))
     r = client.post("/add/photo", files={"photo": ("bag.png", data, "image/png")})
-    assert r.status_code == 200 and 'value="red"' in r.text
+    assert r.status_code == 200 and 'value="Red"' in r.text
 
 
 def test_category_crud(client):

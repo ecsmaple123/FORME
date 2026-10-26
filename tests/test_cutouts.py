@@ -74,8 +74,8 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
     assert f"/media/cutout/{photo.cutout_file}.thumb.webp" in grid.text
     # colors now come from the garment only
     from app.services.colors import nearest_color_name
-    assert nearest_color_name(item.colors[0].hex) == "navy" and item.colors[0].share > 0.8
-    assert not any(nearest_color_name(c.hex) == "white" for c in item.colors)
+    assert nearest_color_name(item.colors[0].hex) == "Navy" and item.colors[0].share > 0.8
+    assert not any(nearest_color_name(c.hex) == "White" for c in item.colors)
 
     r = client.get(f"/items/{item_id}/photos/{photo.id}/cutout")
     assert r.headers.get("HX-Refresh") == "true"
@@ -96,16 +96,16 @@ def test_item_color_follows_cover_until_edited(client):
     item_id = int(r.headers["location"].rsplit("/", 1)[1])
     _batch()
     photos, item = _photos(item_id)
-    assert item.color_hex == item.colors[0].hex and item.color_name == "navy"  # from the cutout
+    assert item.color_hex == item.colors[0].hex and item.color_name == "Navy"  # from the cutout
     assert "swatch" not in client.get(f"/items/{item_id}").text
     client.post(f"/items/{item_id}/photos/{photos[1].id}/cover")
-    assert nearest_color_name(_photos(item_id)[1].color_hex) == "red"  # still automatic
+    assert nearest_color_name(_photos(item_id)[1].color_hex) == "Red"  # still automatic
 
     client.post(f"/items/{item_id}/edit", data={"name": "Coat", "category_id": "1",
                                                  "color_hex": "#00aa00", "color_name": ""})
     client.post(f"/items/{item_id}/photos/{photos[0].id}/cover")
     _, item = _photos(item_id)
-    assert item.color_hex == "#00aa00" and nearest_color_name(item.colors[0].hex) == "navy"
+    assert item.color_hex == "#00aa00" and nearest_color_name(item.colors[0].hex) == "Navy"
 
 
 def test_fit_picture_keeps_background(client, settings):

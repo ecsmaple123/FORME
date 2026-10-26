@@ -63,8 +63,9 @@ _NAMED_LAB = {name: rgb_to_lab(hex_to_rgb(h)) for name, h in NAMED_COLORS.items(
 
 
 def nearest_color_name(hex_value: str) -> str:
+    """The closest palette name, capitalised like a typed one ("Light Grey")."""
     lab = rgb_to_lab(hex_to_rgb(hex_value))
     return min(
         _NAMED_LAB,
         key=lambda name: sum((x - y) ** 2 for x, y in zip(lab, _NAMED_LAB[name])),
-    )
+    ).title()

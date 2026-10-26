@@ -7,11 +7,11 @@
 <div class="form-layout">
   <div class="form-image">
     {% if item %}
-      <img src="{{ media_url(item, 'display') }}" alt="">
+      <img src="{{ media_url(item, 'display') }}" alt="" id="form-photo">
       <p class="muted small">{{ item.photos|length }} photo{{ "" if item.photos|length == 1 else "s" }}. Add or change photos on the <a href="/items/{{ item.id }}">item page</a>.</p>
     {% elif staged %}
       {% set first = staged[0][0] %}
-      <img src="{{ staged_url(first) }}" alt="">
+      <img src="{{ staged_url(first) }}" alt="" id="form-photo">
       <ul class="staged">
         {% for s, kind in staged %}
         <li>
@@ -71,6 +71,10 @@
         <input id="color_name" name="color_name" value="{{ data.color_name }}" autocapitalize="words" maxlength="40"
                placeholder="name (filled in automatically)" aria-label="Color name">
       </span>
+      {% if item or staged %}
+      <button type="button" class="ghost" id="color-from-photo">Pick from photo</button>
+      <p class="muted small" id="color-pick-hint" aria-live="polite" hidden></p>
+      {% endif %}
       {% if errors.color_hex %}<span class="hint">{{ errors.color_hex }}</span>{% endif %}
       <p class="muted small">Detected from the cover photo (without its background) until you change it.</p>
     </div>
@@ -107,4 +111,5 @@
     </div>
   </form>
 </div>
+<script src="/static/colorpick.js" defer></script>
 {% endblock %}

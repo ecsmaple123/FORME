@@ -45,3 +45,10 @@ def test_recolor_all_keeps_edited_colors(client):
     auto, edited = _item(auto_id), _item(edited_id)
     assert auto.color_hex == auto.colors[0].hex and auto.color_name == "Navy"
     assert (edited.color_hex, edited.color_name) == ("#00aa00", "Grass")
+
+
+def test_pick_from_photo_on_the_form(client):
+    item_id = _create(client)
+    r = client.get(f"/items/{item_id}/edit")
+    assert "id=\"color-from-photo\"" in r.text and "/static/colorpick.js" in r.text
+    assert "id=\"form-photo\"" in r.text

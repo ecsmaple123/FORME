@@ -182,6 +182,8 @@ details.panel form { margin-top: 1rem; max-width: 520px; }
 
 .form-layout { display: grid; grid-template-columns: minmax(260px, 420px) minmax(0, 640px); gap: 2rem; }
 .form-image img { width: 100%; border-radius: var(--radius); background: var(--tile); border: 1px solid var(--line); }
+.form-image img.picking { cursor: crosshair; outline: 3px solid var(--accent); outline-offset: 2px; }
+#color-from-photo { margin-top: .5rem; }
 .item-form > * + * { margin-top: 1rem; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .color-input { display: flex; gap: .5rem; align-items: center; }

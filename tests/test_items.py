@@ -266,3 +266,8 @@ def test_truncated_jpeg_is_a_clear_error(client):
     data = make_image()[:5000]
     r, token = _upload(client, data=data)
     assert r.status_code == 422 and token is None and "may be damaged" in r.text
+
+
+def test_hex_without_hash(client):
+    item = _item(_create(client, color_hex=" C62A2A ", color_name=""))  # phone keyboards: no #
+    assert item.color_hex == "#c62a2a" and item.color_name == "Red"

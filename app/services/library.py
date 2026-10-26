@@ -266,6 +266,8 @@ def validate(data: ItemData, session: Session) -> Dict[str, str]:
         errors["category_id"] = "Pick a category."
     data.fabric = fabric.clean(data.fabric)
     data.color_hex = data.color_hex.strip().lower()
+    if re.match(r"^[0-9a-f]{6}$", data.color_hex):
+        data.color_hex = "#" + data.color_hex  # typed without the # (awkward on phone keyboards)
     if data.color_hex and not HEX_RE.match(data.color_hex):
         errors["color_hex"] = "Use a hex color like #1d2645."
     elif data.color_hex and not data.color_name.strip():

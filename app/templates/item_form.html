@@ -66,7 +66,8 @@
         <input type="color" id="color_pick" value="{{ data.color_hex or '#888888' }}" aria-label="Pick a color"
                oninput="document.getElementById('color_hex').value=this.value;document.getElementById('color_name').value='';">
         <input id="color_hex" name="color_hex" value="{{ data.color_hex }}" placeholder="#1d2645" maxlength="7"
-               class="color-hex" aria-label="Hex code">
+               class="color-hex" aria-label="Hex code"
+               oninput="var m=/^#?([0-9a-f]{6})$/i.exec(this.value.trim()),p=document.getElementById('color_pick');if(m&&p.value!=='#'+m[1].toLowerCase()){p.value='#'+m[1].toLowerCase();document.getElementById('color_name').value='';}">
         <input id="color_name" name="color_name" value="{{ data.color_name }}" autocapitalize="words" maxlength="40"
                placeholder="name (filled in automatically)" aria-label="Color name">
       </span>

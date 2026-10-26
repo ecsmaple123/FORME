@@ -144,6 +144,11 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   The 3 live lowercase names (charcoal, black, khaki) were title-cased after backup
   `wardrobe-20261026-130609`. 115 tests. Commits 46f1291, 775de66.
 
+- **2026-10-26: Hex box updates the swatch** (user: "when i change the hex value in the field, the color
+  preview doesnt update"). `oninput` on `#color_hex`: a full 6-digit code (# optional, any case) sets
+  the picker and clears the colour name (re-detected on save), like the picker does; same colour keeps a
+  typed name. Server adds a missing # (`validate`). Checked in headless Edge. 116 tests.
+
 ## Where things stand (2026-10-25, end of session)
 - Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
   only (push with the next change). No open bugs.

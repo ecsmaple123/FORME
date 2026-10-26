@@ -21,8 +21,8 @@
     Up to {{ MAX_PER_REQUEST }}.
   </p>
   <div class="panel stack import-fields">
-    <label>Name <input name="name" value="{{ title }}"></label>
-    <label>Brand <input name="brand" value="{{ brand }}"></label>
+    <label>Name <input name="name" value="{{ title }}" autocapitalize="words"></label>
+    <label>Brand <input name="brand" value="{{ brand }}" autocapitalize="words"></label>
     {% if url %}<p class="muted small">Source: {{ url|truncate(80) }}</p>{% endif %}
     <div class="actions">
       <button class="primary" type="submit">Continue</button>

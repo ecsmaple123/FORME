@@ -32,7 +32,7 @@
   <form method="post" id="item-form" action="{{ '/items/%d/edit'|format(item.id) if item else '/items' }}" class="item-form">
 
     <label class="{{ 'invalid' if errors.name }}">Name
-      <input name="name" value="{{ data.name }}" required maxlength="200" autofocus>
+      <input name="name" value="{{ data.name }}" autocapitalize="words" required maxlength="200" autofocus>
       {% if errors.name %}<span class="hint">{{ errors.name }}</span>{% endif %}
     </label>
 
@@ -49,11 +49,11 @@
         {% if errors.category_id %}<span class="hint">{{ errors.category_id }}</span>{% endif %}
       </label>
       <label id="new-category" {% if not data.new_category %}hidden{% endif %}>New category
-        <input name="new_category" value="{{ data.new_category }}" maxlength="60" placeholder="e.g. Knitwear">
+        <input name="new_category" value="{{ data.new_category }}" autocapitalize="words" maxlength="60" placeholder="e.g. Knitwear">
         <span class="hint muted">Added to your categories when you save. Reorder them in Settings.</span>
       </label>
       <label>Subcategory
-        <input name="subcategory" value="{{ data.subcategory }}" list="subcats" maxlength="80" placeholder="e.g. T-shirt">
+        <input name="subcategory" value="{{ data.subcategory }}" autocapitalize="words" list="subcats" maxlength="80" placeholder="e.g. T-shirt">
         <datalist id="subcats">
           {% for subs in subcats.values() %}{% for s in subs %}<option value="{{ s }}">{% endfor %}{% endfor %}
         </datalist>
@@ -67,7 +67,7 @@
                oninput="document.getElementById('color_hex').value=this.value;document.getElementById('color_name').value='';">
         <input id="color_hex" name="color_hex" value="{{ data.color_hex }}" placeholder="#1d2645" maxlength="7"
                class="color-hex" aria-label="Hex code">
-        <input id="color_name" name="color_name" value="{{ data.color_name }}" maxlength="40"
+        <input id="color_name" name="color_name" value="{{ data.color_name }}" autocapitalize="words" maxlength="40"
                placeholder="name (filled in automatically)" aria-label="Color name">
       </span>
       {% if errors.color_hex %}<span class="hint">{{ errors.color_hex }}</span>{% endif %}
@@ -75,10 +75,10 @@
     </div>
 
     <div class="row three">
-      <label>Fabric <input name="fabric" value="{{ data.fabric }}" list="fabrics" maxlength="80" placeholder="e.g. Cashmere">
+      <label>Fabric <input name="fabric" value="{{ data.fabric }}" autocapitalize="words" list="fabrics" maxlength="80" placeholder="e.g. Cashmere">
         <datalist id="fabrics">{% for f in fabrics %}<option value="{{ f }}">{% endfor %}</datalist>
       </label>
-      <label>Brand <input name="brand" value="{{ data.brand }}" maxlength="100"></label>
+      <label>Brand <input name="brand" value="{{ data.brand }}" autocapitalize="words" maxlength="100"></label>
       <label>Size <input name="size" value="{{ data.size }}" maxlength="40"></label>
     </div>
 

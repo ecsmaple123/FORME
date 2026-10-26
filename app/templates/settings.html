@@ -156,7 +156,7 @@
           </form>
         </div>
         <form method="post" action="/categories/{{ c.id }}" class="cat-name">
-          <input name="name" value="{{ c.name }}" maxlength="60" required aria-label="Name of {{ c.name }}">
+          <input name="name" value="{{ c.name }}" autocapitalize="words" maxlength="60" required aria-label="Name of {{ c.name }}">
           <button type="submit" class="ghost">Save</button>
         </form>
         <span class="cat-count muted small" title="Items">{{ counts.get(c.id, 0) }}</span>
@@ -170,7 +170,7 @@
       {% endfor %}
     </ol>
     <form method="post" action="/categories" class="searchrow">
-      <input name="name" placeholder="New category" maxlength="60" required aria-label="New category name">
+      <input name="name" placeholder="New category" autocapitalize="words" maxlength="60" required aria-label="New category name">
       <button type="submit">{{ icon("plus") }} Add</button>
     </form>
   </section>

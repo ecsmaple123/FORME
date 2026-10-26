@@ -48,7 +48,7 @@
   <form id="save-form" method="post" action="/outfits" class="panel stack studio-save">
     <input type="hidden" name="layout" id="layout">
     {% if outfit %}<input type="hidden" name="outfit_id" value="{{ outfit.id }}">{% endif %}
-    <label>Name <input name="name" value="{{ name }}" maxlength="200" placeholder="{{ outfit.name if outfit else placeholder }}"></label>
+    <label>Name <input name="name" value="{{ name }}" autocapitalize="words" maxlength="200" placeholder="{{ outfit.name if outfit else placeholder }}"></label>
     <label>Notes <textarea name="notes" rows="2" maxlength="4000" placeholder="Occasion, ideas, what to buy…">{{ notes }}</textarea></label>
     <div class="actions">
       <button class="primary" type="submit">{{ "Save changes" if outfit else "Save outfit" }}</button>

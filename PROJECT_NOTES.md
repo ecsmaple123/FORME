@@ -149,6 +149,33 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   the picker and clears the colour name (re-detected on save), like the picker does; same colour keeps a
   typed name. Server adds a missing # (`validate`). Checked in headless Edge. 116 tests.
 
+- **2026-10-26: Better cutouts and colours** (user: "sometimes an image doesnt get cut properly ... a few
+  chinos still have some backgroud left on them ... Manual user cropping or something else? Also,
+  sometimes the photo doesnt show the actual color of the items due to shadows/lighting"; then "can we
+  do all of this?"; for colour chose "Both" (white balance tap + pick from photo)). Findings: the model
+  keeps the floor between trouser legs; backdrop cleanup only ran for even backdrops. 19 of 20 items had
+  a hand-picked colour (my first claim that the app's maths caused #754a00 etc. was wrong: those were
+  the user's picks; the photos themselves have a warm cast).
+  - Colour detection: clusters that are one fabric in light and shadow are merged; the colour is the
+    median of the mid-tones (`images._merge_shades`, `_true_color`). New names Dark Navy/Olive/Brown/
+    Green. `python -m app recolor` re-detects every item (typed colours stay; changed 1 item live).
+  - Originals kept: item photos keep a display-size working copy (orig = display JPEG) + a mask
+    (`images/mask/<stem>.png`); the cutout is display + mask + white balance (`compose_cutout`).
+    Migration 0010 (`white_balance`, `touched_up`). Backups include `images/mask/`.
+  - Touch up (`/items/{id}/photos/{pid}/touchup`, `touchup.js`): Erase area (tap; flood fill that
+    follows gradual changes, then clears specks it nearly surrounds), Eraser, Restore, Lighting (tap
+    white/grey: per-channel gains 0.5-2), Move, zoom, undo; Save posts the mask PNG + gains.
+    Older photos are promoted from their cutout on first open (restore can only bring back what the
+    cutout still has). Hand-edited photos are skipped by `cutouts redo`.
+  - Pick from photo: button under Color on the item form; tap the form photo (9x9 average).
+  - Floor patches (`cutout.floor_patches`): on photos without an even backdrop, large kept areas in
+    the edge colours (not the item's) are removed. Guards: item colours must be well apart from the
+    floor (else nothing), patches >= 0.4% of the photo, <= 35% of the item. Tried on the user's
+    chinos rebuilt on their own floor texture: navy-on-white-bag cleaned, khaki fine, olive-on-grey-
+    brown left alone (at a 50% limit it shredded the olive trousers, so the guards matter).
+  - Checked in headless Edge on a preview (phone size): one tap removed the patches on the khaki and
+    olive chinos, most of the navy one; lighting + save work. 131 tests.
+
 ## Where things stand (2026-10-25, end of session)
 - Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
   only (push with the next change). No open bugs.
@@ -201,14 +228,15 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
 
 ## Background removal (cutouts)
 - **What:** each item photo (kind `product`) gets a transparent WebP cutout cropped to the subject
-  (`data/images/cutout/<cutout_file>.webp` + `.thumb.webp`, new name on each redo). Once it's done the
-  worker **deletes the photo with its background** (orig/display/thumb); `cleanup_staging` (app start)
-  does the same for any done photo that still has them. `media_url` serves the cutout for every size,
-  "orig" included. Fit pictures (kind `fit`) are never cut out (state `skip`). Item colors come from
+  (`data/images/cutout/<cutout_file>.webp` + `.thumb.webp`, new name on each redo). Since 2026-10-26
+  the worker keeps the mask (`images/mask/<stem>.png`) and shrinks the original to the display copy
+  (orig = display JPEG, `image_ext` jpg) instead of deleting it; photos cut out before that have only
+  their cutout until touched up. `media_url` serves the cutout for every size, "orig" included. Fit pictures (kind `fit`) are never cut out (state `skip`). Item colors come from
   the cover's cutout.
 - **States** (`item_photo.cutout_status`): pending → done | none (no subject between 2% and 95% of the
   frame) | failed (exception, logged); skip = fit picture. "Try again" / `./wardrobe.sh cutouts retry`
-  re-queue; `cutouts redo` and `rebuild-images` only re-queue photos whose original still exists.
+  re-queue; `cutouts redo` re-queues photos whose original exists and that weren't touched up by
+  hand; `rebuild-images` makes a missing cutout again from its mask (or re-queues it without one).
 - **Backups include `images/cutout/`** since 0006 (it's the only copy of an item photo now). Older
   backups have only `images/orig/`; restoring one re-queues their cutouts.
 - **Model:** U^2-Net-p (`models/u2netp.onnx`, 4.6 MB, Apache-2.0) from the rembg release, downloaded by
@@ -231,8 +259,6 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   `python -m app cutout-batch`, which loads the model, processes all pending photos one at a time, and
   exits (peak 348 MB RSS / 530 MB virtual). If OpenCV or the model is missing it exits 3 and the
   watcher waits 10 min. The detail page polls `/items/{id}/photos/{pid}/cutout` every 4 s while pending.
-- **Backups** don't include cutouts. After a restore, `rebuild-images` re-queues every photo whose
-  cutout file is missing.
 - **Limits:** a photo of someone wearing the item keeps the whole person. Garment-only segmentation
   needs a clothing model (~176 MB `u2net_cloth_seg`), too slow and too big for this Pi.
 

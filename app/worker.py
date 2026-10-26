@@ -5,8 +5,9 @@ few MB of RAM) whether any photo is waiting. If so it runs `python -m app cutout
 process that loads numpy, OpenCV and the model (~285 MB), cuts out every waiting photo one at a
 time, and exits so the memory is given back.
 
-A cutout is made from the photo's display image (already rotated, at most 1500 px); after that
-the photo with its background (orig, display, thumb) is deleted. Fit pictures are never queued.
+A cutout is made from the photo's display image (already rotated, at most 1500 px); the mask is
+kept next to it and the original is shrunk to that display copy, so the cutout can be touched up
+later (app.services.library.save_touchup). Fit pictures are never queued.
 Photos deleted or changed while being processed are skipped and their new files removed.
 """
 import logging
@@ -71,13 +72,15 @@ def process_photo(photo_id: int, segment: Callable) -> Optional[str]:
         photo = session.get(ItemPhoto, photo_id)
         if photo is None or photo.cutout_status != "pending":
             return None
-        stem, ext = photo.image_file, photo.image_ext
+        stem, ext, white_balance = photo.image_file, photo.image_ext, photo.white_balance
 
     new_name, status = None, "failed"
     try:
         with Image.open(images.paths(images_dir, stem)["display"]) as im:
             rgb = im.convert("RGB")
-        new_name = images.save_cutout(images_dir, rgb, segment(rgb))
+        alpha = segment(rgb)
+        images.save_mask(images_dir, stem, alpha)
+        new_name = images.save_cutout(images_dir, images.apply_white_balance(rgb, white_balance), alpha)
         status = "done" if new_name else "none"
     except Exception:  # one bad photo must not stop the queue
         log.exception("cutout failed for photo %s", photo_id)
@@ -90,6 +93,8 @@ def process_photo(photo_id: int, segment: Callable) -> Optional[str]:
         old = photo.cutout_file
         photo.cutout_file = new_name
         photo.cutout_status = status
+        if status == "done":
+            photo.image_ext = images.keep_working_copy(images_dir, stem, ext)
         session.add(photo)
         session.flush()
         if photo.position == 0:
@@ -97,8 +102,6 @@ def process_photo(photo_id: int, segment: Callable) -> Optional[str]:
         session.commit()
     if old and old != new_name:
         images.delete_files(images_dir, "", "", cutout=old)
-    if status == "done":
-        images.delete_files(images_dir, stem, ext)  # only the cutout is kept
     return status
 
 

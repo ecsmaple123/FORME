@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlmodel import Session
 
 from ..db import get_session
@@ -144,6 +144,33 @@ def cutout_retry(item_id: int, photo_id: int, session: Session = Depends(get_ses
     item = _item_or_404(session, item_id)
     library.retry_cutout(session, _photo_or_404(item, photo_id))
     return RedirectResponse(f"/items/{item_id}?photo={photo_id}", status_code=303)
+
+
+@router.get("/items/{item_id}/photos/{photo_id}/touchup", response_class=HTMLResponse)
+def touchup_page(request: Request, item_id: int, photo_id: int,
+                 session: Session = Depends(get_session)):
+    """Erase what's left of the background, bring back missing parts, fix the lighting."""
+    item = _item_or_404(session, item_id)
+    photo = _photo_or_404(item, photo_id)
+    try:
+        library.prepare_touchup(session, photo)
+    except UserError as exc:
+        return _detail(request, item, photo, str(exc), 409)
+    return templates.TemplateResponse(request, "touchup.html", {"item": item, "photo": photo})
+
+
+@router.post("/items/{item_id}/photos/{photo_id}/touchup")
+def touchup_save(item_id: int, photo_id: int, mask: UploadFile = File(...),
+                 white_balance: str = Form(""), session: Session = Depends(get_session)):
+    item = _item_or_404(session, item_id)
+    photo = _photo_or_404(item, photo_id)
+    try:
+        library.prepare_touchup(session, photo)
+        library.save_touchup(session, item, photo,
+                             mask.file.read(library.TOUCHUP_MASK_MAX_BYTES + 1), white_balance)
+    except UserError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=422)
+    return JSONResponse({"url": f"/items/{item_id}?photo={photo_id}"})
 
 
 @router.get("/items/{item_id}/photos/{photo_id}/cutout", response_class=HTMLResponse)

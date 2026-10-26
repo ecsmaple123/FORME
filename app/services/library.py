@@ -6,6 +6,7 @@ data/staging/), then the form is saved and the staged photos are attached to the
 first one is the cover). Abandoned staged photos are removed after a day. Photos added to an
 existing item skip staging.
 """
+import io
 import json
 import os
 import re
@@ -16,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import BinaryIO, Dict, List, Optional, Sequence, Tuple
 
+from PIL import Image
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
@@ -186,18 +188,14 @@ def cleanup_staging(max_age: int = STAGING_MAX_AGE) -> int:
                 pass
             side.unlink(missing_ok=True)
             removed += 1
-    # Photos whose background was removed keep only the cutout (the worker deletes the rest; this
-    # catches photos cut out before that, or a worker stopped in between).
-    with Session(get_engine()) as session:
-        for stem, ext in session.exec(select(ItemPhoto.image_file, ItemPhoto.image_ext)
-                                      .where(ItemPhoto.cutout_status == "done")).all():
-            images.delete_files(settings.images_dir, stem, ext)
     # Image files that no item and no staged upload refers to (e.g. left by a crash).
     with Session(get_engine()) as session:
         keep = set(session.exec(select(ItemPhoto.image_file)).all())
         keep |= {c for c in session.exec(select(ItemPhoto.cutout_file)).all() if c}
     keep |= {side.stem for side in settings.staging_dir.glob("*.json")}
-    for kind in ("orig", "display", "thumb", "cutout"):
+    for kind in ("orig", "display", "thumb", "cutout", "mask"):
+        if not (settings.images_dir / kind).is_dir():
+            continue
         for f in (settings.images_dir / kind).iterdir():
             # name.ext and cutout thumbnails name.thumb.webp
             if f.name.split(".")[0] not in keep and now - f.stat().st_mtime > max_age:
@@ -424,6 +422,67 @@ def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:
     item.updated_at = utcnow()
     session.add(item)
     session.commit()
+
+
+TOUCHUP_MASK_MAX_BYTES = 8 * 1024 * 1024
+
+
+def prepare_touchup(session: Session, photo: ItemPhoto) -> None:
+    """Make sure the photo has a working copy + mask to edit (older photos: from the cutout)."""
+    if photo.kind == "fit":
+        raise UserError("Fit pictures keep their background, so there's nothing to touch up.")
+    if photo.cutout_status == "pending":
+        raise UserError("The background is still being removed. Try again in a moment.")
+    images_dir = get_settings().images_dir
+    p = images.paths(images_dir, photo.image_file)
+    if p["display"].is_file():
+        if not images.mask_path(images_dir, photo.image_file).is_file():  # nothing found or failed: start from an empty mask
+            with Image.open(p["display"]) as im:
+                images.save_mask(images_dir, photo.image_file, Image.new("L", im.size, 0))
+        return
+    if photo.cutout_file and images.cutout_paths(images_dir, photo.cutout_file)["display"].is_file():
+        photo.image_ext = images.promote_cutout(images_dir, photo.image_file, photo.cutout_file)
+        session.add(photo)
+        session.commit()
+        return
+    raise UserError("This photo's files are missing, so it can't be touched up.")
+
+
+def save_touchup(session: Session, item: Item, photo: ItemPhoto, mask_png: bytes,
+                 white_balance: str) -> None:
+    """Store a hand-edited mask + white balance and rebuild the cutout from them."""
+    white_balance = white_balance.strip()
+    if white_balance and images.parse_white_balance(white_balance) is None:
+        raise UserError("That lighting correction isn't valid.")
+    if len(mask_png) > TOUCHUP_MASK_MAX_BYTES:
+        raise UserError("That edit is too large to save.")
+    images_dir = get_settings().images_dir
+    p = images.paths(images_dir, photo.image_file)
+    try:
+        with Image.open(p["display"]) as im:
+            size = im.size
+        with Image.open(io.BytesIO(mask_png)) as m:
+            if m.format != "PNG" or m.size != size:
+                raise UserError("The edit doesn't match the photo. Reload the page and try again.")
+            alpha = m.convert("L")
+    except (OSError, Image.DecompressionBombError):
+        raise UserError("The edit couldn't be read. Reload the page and try again.")
+    new_name = images.compose_cutout(images_dir, photo.image_file, white_balance, alpha, by_hand=True)
+    if new_name is None:
+        raise UserError("Nothing of the item would be left. Restore part of it, then save.")
+    images.save_mask(images_dir, photo.image_file, alpha)
+    old = photo.cutout_file
+    photo.cutout_file, photo.cutout_status = new_name, "done"
+    photo.white_balance, photo.touched_up = white_balance, True
+    session.add(photo)
+    session.flush()
+    if photo.position == 0:
+        _recolor(session, item)
+    item.updated_at = utcnow()
+    session.add(item)
+    session.commit()
+    if old and old != new_name:
+        images.delete_files(images_dir, "", "", cutout=old)
 
 
 def retry_cutout(session: Session, photo: ItemPhoto) -> None:

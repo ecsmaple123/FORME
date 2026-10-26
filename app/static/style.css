@@ -31,6 +31,7 @@
   --wx-snow: #9cc2e6;
   --wx-bolt: #f4b53f;
   --radius: 12px;
+  --checker-a: #ffffff; --checker-b: #ebe7df;   /* behind a cutout being touched up */
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   color-scheme: light;
 }
@@ -47,6 +48,7 @@
     --hero: linear-gradient(135deg, #1e1d1b 0%, #181f1d 100%);
     --wx-moon: #f0dc96; --wx-cloud: #4b5560; --wx-cloud-line: #9aa5b1; --wx-cloud-back: #39424b;
     --wx-rain: #6aa8e6; --wx-snow: #b7d5f0;
+    --checker-a: #2a2927; --checker-b: #393734;
     color-scheme: dark;
   }
 }
@@ -62,6 +64,7 @@
   --hero: linear-gradient(135deg, #1e1d1b 0%, #181f1d 100%);
   --wx-moon: #f0dc96; --wx-cloud: #4b5560; --wx-cloud-line: #9aa5b1; --wx-cloud-back: #39424b;
   --wx-rain: #6aa8e6; --wx-snow: #b7d5f0;
+  --checker-a: #2a2927; --checker-b: #393734;
   color-scheme: dark;
 }
 
@@ -496,3 +499,25 @@ form.htmx-request .ask-label { display: none; }
 .login { max-width: 380px; margin: 3rem auto 0; }
 .login .page-title { margin: 0; }
 .access-form { max-width: 420px; }
+
+/* ---------- touch-up (erase leftovers, restore, lighting) ---------- */
+.touchup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 320px); gap: 1.25rem; align-items: start; }
+.tu-stage { overflow: auto; max-height: 72vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.tu-canvas {
+  display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair;
+  background-color: var(--checker-a);
+  background-image: conic-gradient(var(--checker-b) 25%, transparent 0 50%, var(--checker-b) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}
+.tu-canvas.is-moving { cursor: grab; }
+.tu-loading { margin: 0; padding: 3rem 1rem; text-align: center; }
+.tu-side { display: flex; flex-direction: column; gap: .75rem; }
+.tu-side .chips { margin-bottom: 0; }
+.tu-hint { margin: 0; min-height: 2.6em; }
+.tu-range { display: grid; gap: .25rem; }
+.tu-range[hidden] { display: none; }
+.tu-check { display: flex; gap: .5rem; align-items: center; }
+@media (max-width: 640px) {
+  .touchup { grid-template-columns: 1fr; gap: .75rem; }
+  .tu-stage { max-height: 60vh; }
+}

@@ -80,6 +80,11 @@ def paths(images_dir: Path, stem: str, ext: str = "jpg") -> dict:
     }
 
 
+def mask_path(images_dir: Path, stem: str) -> Path:
+    """What is the item in an item photo ("L" PNG, display size; white = item)."""
+    return images_dir / "mask" / f"{stem}.png"
+
+
 def cutout_paths(images_dir: Path, name: str) -> dict:
     return {
         "display": images_dir / "cutout" / f"{name}.webp",
@@ -91,6 +96,7 @@ def delete_files(images_dir: Path, stem: str, ext: str, cutout: Optional[str] = 
     if stem:
         for p in paths(images_dir, stem, ext).values():
             p.unlink(missing_ok=True)
+        mask_path(images_dir, stem).unlink(missing_ok=True)
     if cutout:
         for p in cutout_paths(images_dir, cutout).values():
             p.unlink(missing_ok=True)
@@ -332,12 +338,14 @@ CUTOUT_MAX_SHARE = 0.95   # more than this means nothing to remove (e.g. a fabri
 CUTOUT_PAD = 0.03         # margin around the subject, as a share of its longer side
 
 
-def subject_box(alpha: Image.Image) -> Optional[tuple]:
-    """Padded bounding box of the opaque part of a mask ("L"), or None if it isn't a usable subject."""
+def subject_box(alpha: Image.Image, by_hand: bool = False) -> Optional[tuple]:
+    """Padded bounding box of the opaque part of a mask ("L"), or None if it isn't a usable subject
+    (a mask drawn by hand may cover anything but nothing)."""
     solid = alpha.point(lambda v: 255 if v >= 128 else 0)
     share = solid.histogram()[255] / (alpha.width * alpha.height)
     box = solid.getbbox()
-    if box is None or not CUTOUT_MIN_SHARE <= share <= CUTOUT_MAX_SHARE:
+    low, high = (0.0005, 1.0) if by_hand else (CUTOUT_MIN_SHARE, CUTOUT_MAX_SHARE)
+    if box is None or not low <= share <= high:
         return None
     left, top, right, bottom = box
     pad = int(CUTOUT_PAD * max(right - left, bottom - top))
@@ -345,12 +353,13 @@ def subject_box(alpha: Image.Image) -> Optional[tuple]:
             min(right + pad, alpha.width), min(bottom + pad, alpha.height))
 
 
-def save_cutout(images_dir: Path, rgb: Image.Image, alpha: Image.Image) -> Optional[str]:
+def save_cutout(images_dir: Path, rgb: Image.Image, alpha: Image.Image,
+                by_hand: bool = False) -> Optional[str]:
     """Write the cutout (display + thumbnail, transparent WebP cropped to the subject).
 
     Returns its new file name, or None when the mask has no usable subject.
     """
-    box = subject_box(alpha)
+    box = subject_box(alpha, by_hand)
     if box is None:
         return None
     name = uuid.uuid4().hex
@@ -367,3 +376,79 @@ def save_cutout(images_dir: Path, rgb: Image.Image, alpha: Image.Image) -> Optio
         delete_files(images_dir, "", "", cutout=name)
         raise
     return name
+
+
+# ---------- touch-ups: mask, white balance, working copy ----------
+
+WHITE_BALANCE_RANGE = (0.5, 2.0)  # per-channel gain
+
+
+def parse_white_balance(text: str) -> Optional[tuple]:
+    """"r,g,b" gains -> tuple, or None if it isn't three gains in range."""
+    try:
+        gains = tuple(float(v) for v in text.split(","))
+    except ValueError:
+        return None
+    low, high = WHITE_BALANCE_RANGE
+    if len(gains) != 3 or not all(low <= g <= high for g in gains):
+        return None
+    return gains
+
+
+def apply_white_balance(rgb: Image.Image, text: str) -> Image.Image:
+    gains = parse_white_balance(text) if text else None
+    if not gains or all(abs(g - 1) < 0.005 for g in gains):
+        return rgb
+    bands = [band.point(lambda v, g=g: min(255, int(v * g + 0.5)))
+             for band, g in zip(rgb.convert("RGB").split(), gains)]
+    return Image.merge("RGB", bands)
+
+
+def save_mask(images_dir: Path, stem: str, alpha: Image.Image) -> None:
+    path = mask_path(images_dir, stem)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp.png")
+    alpha.convert("L").save(tmp, "PNG", optimize=True)
+    tmp.replace(path)
+
+
+def compose_cutout(images_dir: Path, stem: str, white_balance: str = "",
+                   alpha: Optional[Image.Image] = None, by_hand: bool = False) -> Optional[str]:
+    """A new cutout from the display copy + mask (the stored one unless given) + white balance."""
+    p = paths(images_dir, stem)
+    with _one_at_a_time:
+        with Image.open(p["display"]) as im:
+            rgb = apply_white_balance(im.convert("RGB"), white_balance)
+        if alpha is None:
+            with Image.open(mask_path(images_dir, stem)) as m:
+                alpha = m.convert("L")
+        if alpha.size != rgb.size:
+            alpha = alpha.resize(rgb.size, Image.BILINEAR)
+        return save_cutout(images_dir, rgb, alpha, by_hand)
+
+
+def keep_working_copy(images_dir: Path, stem: str, ext: str) -> str:
+    """After the cutout: the display-size photo replaces the original (a touch-up only needs that
+    much, and it keeps backups small). Returns the original's new extension."""
+    p = paths(images_dir, stem, ext)
+    target = paths(images_dir, stem, "jpg")["orig"]
+    tmp = target.with_suffix(".tmp")
+    shutil.copyfile(p["display"], tmp)
+    tmp.replace(target)
+    if p["orig"] != target:
+        p["orig"].unlink(missing_ok=True)
+    return "jpg"
+
+
+def promote_cutout(images_dir: Path, stem: str, cutout: str) -> str:
+    """A photo cut out before originals were kept: its cutout becomes the working copy and its
+    transparency the mask, so it can be touched up too. Returns the original's new extension."""
+    with Image.open(cutout_paths(images_dir, cutout)["display"]) as im:
+        rgba = im.convert("RGBA")
+    p = paths(images_dir, stem, "jpg")
+    for d in ("orig", "display", "thumb"):
+        p[d].parent.mkdir(parents=True, exist_ok=True)
+    rgba.convert("RGB").save(p["orig"], "JPEG", quality=92)
+    save_mask(images_dir, stem, rgba.getchannel("A"))
+    render_derivatives(images_dir, stem, "jpg")
+    return "jpg"

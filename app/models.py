@@ -75,9 +75,11 @@ class Item(SQLModel, table=True):
 
 
 class ItemPhoto(SQLModel, table=True):
-    """One photo of an item. Files: data/images/{orig,display,thumb}/<image_file>.* until the
-    background is removed; then only data/images/cutout/<cutout_file>.webp + .thumb.webp (made by
-    app.worker, which deletes the photo with its background)."""
+    """One photo of an item. Files: data/images/{orig,display,thumb}/<image_file>.* (the photo
+    with its background); item photos also get data/images/mask/<image_file>.png (what is the
+    item) and data/images/cutout/<cutout_file>.webp + .thumb.webp, made from display + mask +
+    white balance (by app.worker, or by a touch-up). Once cut out, the original is shrunk to the
+    display size: that's all the cutout is made from."""
     __tablename__ = "item_photo"
     id: Optional[int] = Field(default=None, primary_key=True)
     item_id: int = Field(foreign_key="item.id", ondelete="CASCADE", index=True)
@@ -90,6 +92,8 @@ class ItemPhoto(SQLModel, table=True):
     height: int = 0
     cutout_file: Optional[str] = Field(default=None, max_length=64)  # new name on every redo
     cutout_status: str = Field(default="pending", max_length=12, index=True)  # CUTOUT_STATES
+    white_balance: str = Field(default="", max_length=40)  # "r,g,b" gains; "" = as shot
+    touched_up: bool = False  # mask edited by hand: never redone automatically
     created_at: datetime = Field(default_factory=utcnow)
 
     item: Optional[Item] = Relationship(back_populates="photos")
@@ -100,7 +104,7 @@ class ItemPhoto(SQLModel, table=True):
 
     @property
     def cutout_shown(self) -> Optional[str]:
-        """The cutout's file name once the background is removed (the photo itself is gone then)."""
+        """The cutout's file name once the background is removed."""
         if self.cutout_status == "done" and self.cutout_file:
             return self.cutout_file
         return None

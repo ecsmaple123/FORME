@@ -61,9 +61,12 @@ def test_new_photo_is_cut_out_and_shown(client, settings):
         assert cut.mode == "RGBA" and cut.size[0] < 700 and cut.size[1] < 1000
         assert cut.getpixel((0, 0))[3] == 0 and cut.getpixel((cut.width // 2, cut.height // 2))[3] == 255
     assert files["thumb"].is_file()
-    # the photo with its background is not kept
-    assert not any(f.exists() for f in images.paths(settings.images_dir, photo.image_file,
-                                                     photo.image_ext).values())
+    # the photo with its background is kept at display size, with its mask, for touch-ups
+    kept = images.paths(settings.images_dir, photo.image_file, photo.image_ext)
+    assert photo.image_ext == "jpg" and all(f.is_file() for f in kept.values())
+    with Image.open(kept["orig"]) as orig, Image.open(kept["display"]) as display, \
+            Image.open(images.mask_path(settings.images_dir, photo.image_file)) as mask:
+        assert orig.size == display.size == mask.size and mask.mode == "L"
 
     r = client.get(f"/items/{item_id}")
     assert f'href="/media/cutout/{photo.cutout_file}.webp"' in r.text
@@ -128,19 +131,16 @@ def test_fit_picture_keeps_background(client, settings):
     assert [p.cutout_status for p in _photos(item_id)[0]] == ["skip", "pending"]
 
 
-def test_cleanup_drops_backgrounds_of_cut_out_photos(client, settings):
-    """Photos cut out before the worker deleted originals lose them at the next cleanup."""
+def test_cleanup_keeps_working_copies(client, settings):
+    """Cut-out photos keep their working copy and mask (the touch-up starts from them)."""
     item_id = _create(client)
-    (photo,), _ = _photos(item_id)
-    files = images.paths(settings.images_dir, photo.image_file, photo.image_ext)
-    keep = {k: f.read_bytes() for k, f in files.items()}
     _batch()
-    for k, f in files.items():
-        f.write_bytes(keep[k])  # as if cut out by the old worker
-    from app.services.library import cleanup_staging
-    cleanup_staging()
-    assert not any(f.exists() for f in files.values())
     (photo,), _ = _photos(item_id)
+    from app.services.library import cleanup_staging
+    cleanup_staging(max_age=-1)
+    files = images.paths(settings.images_dir, photo.image_file, photo.image_ext)
+    assert all(f.is_file() for f in files.values())
+    assert images.mask_path(settings.images_dir, photo.image_file).is_file()
     assert images.cutout_paths(settings.images_dir, photo.cutout_file)["display"].is_file()
 
 
@@ -167,22 +167,11 @@ def test_no_subject_and_failure_then_retry(client):
     assert _photos(second)[0][0].cutout_status == "done"
 
 
-def _keep_original(settings, photo):
-    """Bytes of a photo's files, to put back after the worker deleted them."""
-    return {f: f.read_bytes() for f in images.paths(settings.images_dir, photo.image_file,
-                                                     photo.image_ext).values()}
-
-
 def test_redo_replaces_old_cutout(client, settings):
     item_id = _create(client)
-    (photo,), _ = _photos(item_id)
-    kept = _keep_original(settings, photo)
     _batch()
     (photo,), _ = _photos(item_id)
     old = images.cutout_paths(settings.images_dir, photo.cutout_file)
-    assert ops.requeue_cutouts(everything=True) == 0  # the original is gone: nothing to redo from
-    for f, data in kept.items():
-        f.write_bytes(data)
     assert ops.requeue_cutouts(everything=True) == 1
     assert _batch() == 0
     (photo,), _ = _photos(item_id)
@@ -233,23 +222,26 @@ def test_unavailable_model_leaves_photos_pending(client):
 
 def test_requeue_and_rebuild(client, settings, capsys):
     item_id = _create(client)
-    (photo,), _ = _photos(item_id)
-    kept = _keep_original(settings, photo)
     _batch(lambda rgb: Image.new("L", rgb.size, 0))
     assert ops.requeue_cutouts() == 1
     _batch()
     (photo,), _ = _photos(item_id)
     assert "1 done" in ops.cutout_summary()
-    # cutout files gone (an old backup) but the original back: rebuild queues the photo again
+    # cutout files gone (an old backup): rebuild makes the cutout again from the mask
     images.delete_files(settings.images_dir, "", "", cutout=photo.cutout_file)
-    for f, data in kept.items():
-        f.write_bytes(data)
+    ops.rebuild_images()
+    (photo,), _ = _photos(item_id)
+    assert photo.cutout_status == "done"
+    assert images.cutout_paths(settings.images_dir, photo.cutout_file)["display"].is_file()
+    # without a mask the photo is queued for the worker again
+    images.mask_path(settings.images_dir, photo.image_file).unlink()
+    images.delete_files(settings.images_dir, "", "", cutout=photo.cutout_file)
     ops.rebuild_images()
     assert _photos(item_id)[0][0].cutout_status == "pending"
     # with neither the original nor the cutout there is nothing to rebuild from
     _batch()
     (photo,), _ = _photos(item_id)
-    images.delete_files(settings.images_dir, "", "", cutout=photo.cutout_file)
+    images.delete_files(settings.images_dir, photo.image_file, photo.image_ext, cutout=photo.cutout_file)
     capsys.readouterr()
     ops.rebuild_images()
     assert _photos(item_id)[0][0].cutout_status == "done"
@@ -257,7 +249,7 @@ def test_requeue_and_rebuild(client, settings, capsys):
 
 
 def test_backup_keeps_cutouts(client, settings, capsys):
-    """After the background is removed the cutout is the only copy, so backups must hold it."""
+    """Backups hold cutouts (older photos have no other copy), working copies and masks."""
     item_id = _create(client)
     fit_id = _create(client, (RED,), kind="fit")
     _batch()
@@ -269,6 +261,8 @@ def test_backup_keeps_cutouts(client, settings, capsys):
     (photo,), _ = _photos(item_id)
     assert photo.cutout_status == "done"
     assert images.cutout_paths(settings.images_dir, photo.cutout_file)["display"].is_file()
+    assert images.mask_path(settings.images_dir, photo.image_file).is_file()
+    assert images.paths(settings.images_dir, photo.image_file, photo.image_ext)["display"].is_file()
     (fit,), _ = _photos(fit_id)
     assert all(f.is_file() for f in images.paths(settings.images_dir, fit.image_file,
                                                  fit.image_ext).values())

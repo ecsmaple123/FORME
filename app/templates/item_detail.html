@@ -11,7 +11,6 @@
       <img src="{{ media_url(shown, 'display') }}" alt="{{ item.name }}">
     </a>
     {% set several = item.photos|length > 1 %}
-    {% if several or shown.kind == "fit" or shown.cutout_status in ("pending", "none", "failed") %}
     <div class="photo-bar">
       {% if shown.kind == "fit" %}<span class="badge">{{ shown.kind_label }}</span>{% endif %}
       {% if several and shown.position == 0 %}<span class="badge">Cover</span>{% endif %}
@@ -23,6 +22,9 @@
         <button type="submit">Try again</button>
       </form>
       {% endif %}
+      {% if shown.kind != "fit" and shown.cutout_status != "pending" %}
+      <a class="button" href="/items/{{ item.id }}/photos/{{ shown.id }}/touchup">Touch up</a>
+      {% endif %}
       {% if several and shown.position != 0 %}
       <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cover" class="inline-mini">
         <button type="submit">Make cover</button>
@@ -32,7 +34,6 @@
       <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
       {% endif %}
     </div>
-    {% endif %}
     {% endif %}
 
     {% if item.photos|length > 1 %}

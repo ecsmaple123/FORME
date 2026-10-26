@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Touch up · {{ item.name }} · FORME{% endblock %}
+{% block content %}
+<p><a href="/items/{{ item.id }}?photo={{ photo.id }}">← {{ item.name }}</a></p>
+<h1 class="page-title">Touch up</h1>
+
+<div class="touchup">
+  <div class="tu-stage" id="tu-stage">
+    <canvas id="tu-canvas" class="tu-canvas" aria-label="Photo of {{ item.name }}"></canvas>
+    <p class="tu-loading muted" id="tu-loading">Loading…</p>
+  </div>
+
+  <div class="tu-side">
+    <div class="chips" role="radiogroup" aria-label="Tool">
+      <label class="chip"><input type="radio" name="tu-tool" value="area" checked><span>Erase area</span></label>
+      <label class="chip"><input type="radio" name="tu-tool" value="erase"><span>Eraser</span></label>
+      <label class="chip"><input type="radio" name="tu-tool" value="restore"><span>Restore</span></label>
+      <label class="chip"><input type="radio" name="tu-tool" value="light"><span>Lighting</span></label>
+      <label class="chip"><input type="radio" name="tu-tool" value="move"><span>Move</span></label>
+    </div>
+    <p class="muted small tu-hint" id="tu-hint" aria-live="polite"></p>
+
+    <label class="tu-range" id="tu-size-row">Brush size
+      <input type="range" id="tu-size" min="4" max="80" value="24">
+    </label>
+    <label class="tu-range" id="tu-tol-row">How similar
+      <input type="range" id="tu-tol" min="8" max="90" value="32">
+    </label>
+    <label class="tu-check"><input type="checkbox" id="tu-show"> Show removed parts</label>
+
+    <div class="studio-tools">
+      <button type="button" id="tu-out" title="Zoom out" aria-label="Zoom out">−</button>
+      <button type="button" id="tu-in" title="Zoom in" aria-label="Zoom in">+</button>
+      <button type="button" id="tu-undo" disabled>Undo</button>
+      <button type="button" id="tu-light-reset" class="ghost" hidden>Reset lighting</button>
+    </div>
+
+    <div class="error" role="alert" id="tu-error" hidden></div>
+    <div class="actions">
+      <button type="button" class="primary" id="tu-save" disabled>Save</button>
+      <a class="button ghost" href="/items/{{ item.id }}?photo={{ photo.id }}">Cancel</a>
+    </div>
+  </div>
+</div>
+
+<script id="touchup-data" type="application/json">{{ {
+  "base": "/media/display/" ~ photo.image_file ~ ".jpg?v=" ~ (photo.cutout_file or ""),
+  "mask": "/media/mask/" ~ photo.image_file ~ ".png?v=" ~ (photo.cutout_file or ""),
+  "wb": photo.white_balance,
+  "save": "/items/" ~ item.id ~ "/photos/" ~ photo.id ~ "/touchup",
+}|tojson }}</script>
+<script src="/static/touchup.js" defer></script>
+{% endblock %}

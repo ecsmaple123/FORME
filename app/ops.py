@@ -2,10 +2,11 @@
 
 A backup is backups/wardrobe-YYYYMMDD-HHMMSS.tar.gz (+ .sha256) holding:
   wardrobe.db     consistent snapshot via SQLite's backup API (safe while the app runs)
-  images/orig/    the photos as uploaded, for those that keep them: fit pictures, and photos
-                  whose background isn't removed (yet). Display + thumbnails are rebuilt on restore.
-  images/cutout/  the cutouts. Once a photo's background is removed only its cutout is kept, so
-                  this is the only copy of it.
+  images/orig/    the photos: fit pictures as uploaded; item photos at display size once cut
+                  out (photos cut out before 2026-10-26 have none until touched up).
+                  Display + thumbnails are rebuilt on restore.
+  images/cutout/  the cutouts (for older photos the only copy).
+  images/mask/    what is the item in each item photo (edited by touch-ups).
   manifest.json   item count, schema revision, git commit
 """
 import json
@@ -19,7 +20,8 @@ from pathlib import Path
 from typing import List
 
 from .config import PROJECT_DIR, get_settings
-from .services.images import cutout_paths, render_derivatives, sha256_file
+from .services.images import (compose_cutout, cutout_paths, mask_path, render_derivatives,
+                              sha256_file)
 
 
 def _git_commit() -> str:
@@ -62,6 +64,7 @@ def backup() -> Path:
             tar.add(snap, arcname="wardrobe.db")
             tar.add(s.images_dir / "orig", arcname="images/orig")
             tar.add(s.images_dir / "cutout", arcname="images/cutout")
+            tar.add(s.images_dir / "mask", arcname="images/mask")
         digest = sha256_file(partial)
         partial.rename(final)
         (s.backup_dir / (name + ".sha256")).write_text(f"{digest}  {name}\n")
@@ -79,7 +82,7 @@ def _safe_members(tar: tarfile.TarFile) -> List[tarfile.TarInfo]:
     for m in tar.getmembers():
         parts = Path(m.name).parts
         ok_name = m.name in ("wardrobe.db", "manifest.json") or (
-            parts[:2] in (("images", "orig"), ("images", "cutout")) and ".." not in parts and not m.name.startswith("/"))
+            parts[:2] in (("images", "orig"), ("images", "cutout"), ("images", "mask")) and ".." not in parts and not m.name.startswith("/"))
         if not ok_name or not (m.isfile() or m.isdir()):
             raise ValueError(f"Unexpected entry in backup: {m.name!r}")
         members.append(m)
@@ -128,20 +131,23 @@ def restore(archive: str) -> Path:
 def rebuild_images() -> int:
     """Regenerate display + thumbnail files from the originals that are kept.
 
-    A cutout whose files are missing (e.g. a backup from before cutouts were backed up) is queued
-    for the cutout worker again, if the original is still there.
+    A cutout whose files are missing (e.g. a backup from before cutouts were backed up) is made
+    again from its mask, or queued for the cutout worker if there's only the original.
     """
     s = get_settings()
     s.ensure_dirs()
     con = sqlite3.connect(str(s.db_path))
     try:
-        rows = con.execute("SELECT id, image_file, image_ext, cutout_status, cutout_file "
-                           "FROM item_photo").fetchall()
-        missing = []
-        for pid, stem, ext, status, cutout in rows:
+        rows = con.execute("SELECT id, image_file, image_ext, cutout_status, cutout_file, "
+                           "white_balance, touched_up FROM item_photo").fetchall()
+        missing, recompose = [], []
+        for pid, stem, ext, status, cutout, white_balance, touched_up in rows:
             has_cutout = bool(cutout) and cutout_paths(s.images_dir, cutout)["display"].is_file()
             if status == "done" and not has_cutout and _has_original(stem, ext):
-                missing.append(pid)
+                if mask_path(s.images_dir, stem).is_file():
+                    recompose.append((pid, stem, white_balance, bool(touched_up)))
+                else:
+                    missing.append(pid)
         con.executemany("UPDATE item_photo SET cutout_status = 'pending' WHERE id = ?",
                         [(pid,) for pid in missing])
         con.commit()
@@ -150,13 +156,24 @@ def rebuild_images() -> int:
     if missing:
         print(f"queued {len(missing)} photo(s) for background removal")
     done = 0
-    for pid, stem, ext, status, cutout in rows:
+    for pid, stem, ext, status, cutout, _wb, _t in rows:
         if _has_original(stem, ext):
             render_derivatives(s.images_dir, stem, ext)
             done += 1
         elif not (status == "done" and cutout
                   and cutout_paths(s.images_dir, cutout)["display"].is_file()):
             print(f"warning: photo {pid} has neither its original nor a cutout")
+    if recompose:
+        con = sqlite3.connect(str(s.db_path))
+        try:
+            for pid, stem, white_balance, by_hand in recompose:
+                name = compose_cutout(s.images_dir, stem, white_balance, by_hand=by_hand)
+                con.execute("UPDATE item_photo SET cutout_file = ?, cutout_status = ? WHERE id = ?",
+                            (name, "done" if name else "none", pid))
+            con.commit()
+        finally:
+            con.close()
+        print(f"made {len(recompose)} cutout(s) again from their masks")
     return done
 
 
@@ -167,13 +184,13 @@ def _has_original(stem: str, ext: str) -> bool:
 def requeue_cutouts(everything: bool = False) -> int:
     """Queue photos for background removal: failed/none ones, or every one that can be redone.
 
-    Fit pictures are never cut out, and a photo whose background is already removed can only be
-    redone while its original is still there (it isn't kept after the cutout is made).
+    Fit pictures are never cut out, a photo can only be redone while its original is there
+    (older photos have only their cutout), and photos touched up by hand are left alone.
     """
     con = sqlite3.connect(str(get_settings().db_path), timeout=10)
     try:
         states = ("failed", "none", "done") if everything else ("failed", "none")
-        rows = con.execute("SELECT id, image_file, image_ext FROM item_photo WHERE kind != 'fit' "
+        rows = con.execute("SELECT id, image_file, image_ext FROM item_photo WHERE kind != 'fit' AND NOT touched_up "
                            f"AND cutout_status IN ({', '.join('?' * len(states))})", states).fetchall()
         ids = [(pid,) for pid, stem, ext in rows if _has_original(stem, ext)]
         con.executemany("UPDATE item_photo SET cutout_status = 'pending' WHERE id = ?", ids)

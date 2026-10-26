@@ -1,5 +1,5 @@
 """Command line: python -m app {serve|migrate|backup|restore FILE|rebuild-images|cleanup|
-cutout-worker|cutout-batch|cutouts [retry|redo]|password [set|remove]}"""
+cutout-worker|cutout-batch|cutouts [retry|redo]|recolor|password [set|remove]}"""
 import logging
 import sys
 import threading
@@ -40,6 +40,11 @@ def main(argv) -> int:
         from .services.library import cleanup_staging
 
         print(f"removed {cleanup_staging()} staged upload(s)")
+        return 0
+    if cmd == "recolor":
+        from .services.library import recolor_all
+
+        print(f"{recolor_all()} item(s) got a new main color")
         return 0
     if cmd in ("cutout-worker", "cutout-batch"):
         logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

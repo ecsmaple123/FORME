@@ -401,6 +401,21 @@ def _recolor(session: Session, item: Item) -> None:
         item.color_name = colors.nearest_color_name(item.color_hex)
 
 
+def recolor_all() -> int:
+    """Detect every item's colors again (after the detection changed); edited colors stay.
+
+    Returns how many items got a different main color."""
+    changed = 0
+    with Session(get_engine()) as session:
+        for item in session.exec(select(Item)).all():
+            before = item.color_hex
+            _recolor(session, item)
+            session.add(item)
+            changed += item.color_hex != before
+        session.commit()
+    return changed
+
+
 def set_cover(session: Session, item: Item, photo: ItemPhoto) -> None:
     ordered = [photo] + [p for p in item.photos if p.id != photo.id]
     _renumber(ordered)

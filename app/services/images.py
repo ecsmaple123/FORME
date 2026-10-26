@@ -5,7 +5,9 @@ size, so they have lower pixel caps (PIXEL_LIMITS). Alpha is flattened before re
 source is freed before resampling, only one image is processed at a time, and color analysis runs
 on a 96 px copy.
 """
+import functools
 import hashlib
+import math
 import shutil
 import threading
 import uuid
@@ -202,18 +204,67 @@ def dominant_colors(im: Image.Image, count: int = 5) -> List[DominantColor]:
     sample = Image.new("RGB", (len(pixels), 1))
     sample.putdata(pixels)
     quant = sample.quantize(colors=count, method=Image.Quantize.MEDIANCUT, kmeans=3)
-    palette = quant.getpalette()[: count * 3]
+    clusters = {}
+    for rgb, idx in zip(pixels, quant.getdata()):
+        clusters.setdefault(idx, []).append(rgb)
     total = len(pixels)
     result = []
-    for n, idx in sorted(quant.getcolors(), reverse=True):
-        rgb = tuple(palette[idx * 3: idx * 3 + 3])
+    for members in sorted(_merge_shades(list(clusters.values())), key=len, reverse=True):
+        rgb = _true_color(members)
         result.append(DominantColor(
             hex=colors.rgb_to_hex(rgb),
-            share=round(n / total, 3),
+            share=round(len(members) / total, 3),
             lab=tuple(round(v, 2) for v in colors.rgb_to_lab(rgb)),
             hue=colors.hue_degrees(rgb),
         ))
     return result
+
+
+SHADE_CHROMA = 12      # clusters this close in a*/b* ...
+SHADE_LIGHTNESS = 40   # ...and this close in lightness are one fabric in light and in shadow
+
+
+@functools.lru_cache(maxsize=65536)
+def _lab(rgb: tuple) -> tuple:
+    return colors.rgb_to_lab(rgb)
+
+
+def _median(values: list) -> float:
+    values = sorted(values)
+    return values[len(values) // 2]
+
+
+def _merge_shades(clusters: List[list]) -> List[list]:
+    """Join clusters that are the same color lit differently (a fold in shadow, a sunny patch)."""
+    centers = []
+    for members in clusters:
+        labs = [_lab(c) for c in members]
+        centers.append(tuple(_median([v[i] for v in labs]) for i in range(3)))
+    group = list(range(len(clusters)))
+
+    def root(i):
+        while group[i] != i:
+            i = group[i]
+        return i
+
+    for i in range(len(clusters)):
+        for j in range(i + 1, len(clusters)):
+            (li, ai, bi), (lj, aj, bj) = centers[i], centers[j]
+            if abs(li - lj) < SHADE_LIGHTNESS and math.hypot(ai - aj, bi - bj) < SHADE_CHROMA:
+                group[root(j)] = root(i)
+    merged = {}
+    for i, members in enumerate(clusters):
+        merged.setdefault(root(i), []).extend(members)
+    return list(merged.values())
+
+
+def _true_color(members: list) -> tuple:
+    """The color as it looks in plain light: the median of the mid-tones, so deep shadows and
+    shine don't drag it darker or lighter (a quantizer's palette entry tends to run dark)."""
+    by_light = sorted(members, key=lambda c: _lab(c)[0])
+    n = len(by_light)
+    mid = by_light[n // 4: max(n // 4 + 1, n * 9 // 10)]
+    return tuple(int(_median([c[i] for c in mid])) for i in range(3))
 
 
 def render_derivatives(images_dir: Path, stem: str, ext: str) -> List[DominantColor]:

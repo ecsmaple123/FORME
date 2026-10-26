@@ -17,7 +17,8 @@ NAMED_COLORS: Dict[str, str] = {
     "burgundy": "#6d1a2a", "maroon": "#5a1e1e", "red": "#c62a2a", "coral": "#f0806a",
     "rust": "#a5472a", "orange": "#e9822a", "mustard": "#d4a32a", "yellow": "#f2d43a",
     "blush": "#efc4c0", "pink": "#ec8fb0", "hot pink": "#e0388a", "gold": "#c9a54a",
-    "silver": "#b7b9bd",
+    "silver": "#b7b9bd", "dark navy": "#19202f", "dark olive": "#47432f",
+    "dark brown": "#3b2a20", "dark green": "#1f3324",
 }
 
 

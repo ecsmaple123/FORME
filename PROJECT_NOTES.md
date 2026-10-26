@@ -134,6 +134,16 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   install_unit), cloudflared 2026.10.3 armhf in `tunnel/` (git-ignored, sha256-checked), `--protocol
   http2` (TCP only, outgoing), metrics 127.0.0.1:8487 (`/quicktunnel` gives the hostname). 115 tests.
 
+- **2026-10-26: Capitalise each word** (user: "when I am typing on mobile, is it possible to captalize every
+  word automatically? Like for brand and fabric"; "make sure it works for the color that gets autofilled
+  too"). `autocapitalize="words"` on item name, brand, fabric, subcategory, colour, new category,
+  Settings category names, Studio outfit name and import-preview name/brand (a keyboard hint: phones
+  only, can still be overridden with Shift). Placed after `value=` because tests match
+  `name=… value=…`. Auto colour names now come out title-cased (`nearest_color_name` → "Light Grey");
+  `_recolor` compares names case-insensitively so old lowercase auto names still follow the cover.
+  The 3 live lowercase names (charcoal, black, khaki) were title-cased after backup
+  `wardrobe-20261026-130609`. 115 tests. Commits 46f1291, 775de66.
+
 ## Where things stand (2026-10-25, end of session)
 - Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
   only (push with the next change). No open bugs.

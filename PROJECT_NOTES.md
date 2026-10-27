@@ -176,7 +176,13 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   - Checked in headless Edge on a preview (phone size): one tap removed the patches on the khaki and
     olive chinos, most of the navy one; lighting + save work. 131 tests.
 
-- **2026-10-27: Studio tray as a board** (user: "i would like the studio page to not have names below  the items, kinda like a board with just everything on it"). The closet tray in /studio shows only the  cutouts on one shared tile surface (no names, no boxes; name kept as title/aria-label). Items on the  board get a soft highlight + accent dot. Phones: a wrapping 4-across grid (max 55vh, scrolls) instead  of the sideways strip. CSS + template only, no restart needed (bfb35db). 131 tests.  Backup before: wardrobe-20261027-161741.
+- **2026-10-27: Studio tray as a board** (user: "i would like the studio page to not have names below
+  the items, kinda like a board with just everything on it"). The closet tray in /studio shows only the
+  cutouts on one shared tile surface (no names, no boxes; name kept as title/aria-label). Items on the
+  board get a soft highlight + accent dot. Phones: a wrapping 4-across grid (max 55vh, scrolls) instead
+  of the sideways strip. CSS + template only, no restart needed (bfb35db). 131 tests.
+  Backup before: wardrobe-20261027-161741.
+
 ## Where things stand (2026-10-25, end of session)
 - Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
   only (push with the next change). No open bugs.

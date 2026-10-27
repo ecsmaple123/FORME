@@ -33,9 +33,8 @@
     <ul class="tray-grid" id="tray">
       {% for i in items %}
       <li data-cat="{{ i.category_id }}" data-name="{{ (i.name ~ ' ' ~ i.fabric ~ ' ' ~ i.brand)|lower }}">
-        <button type="button" class="tray-item" data-id="{{ i.id }}" draggable="true" title="{{ i.name }}">
+        <button type="button" class="tray-item" data-id="{{ i.id }}" draggable="true" title="{{ i.name }}" aria-label="{{ i.name }}">
           <img src="{{ media_url(i) }}" alt="" loading="lazy" draggable="false">
-          <span>{{ i.name }}</span>
         </button>
       </li>
       {% endfor %}

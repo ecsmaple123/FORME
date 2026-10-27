@@ -446,17 +446,19 @@ form.htmx-request .ask-label { display: none; }
 .studio-tools button { min-width: 2.5rem; justify-content: center; }
 .studio-tools button:disabled { opacity: .45; cursor: default; }
 .clear-board { margin-left: auto; }
-.tray-grid { list-style: none; padding: 0; margin: .75rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: .5rem; }
+/* the closet as one board: just the cutouts on a shared surface, no names or boxes */
+.tray-grid { list-style: none; padding: .5rem; margin: .75rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: .25rem; background: var(--tile); border: 1px solid var(--line); border-radius: var(--radius); }
 .tray-grid li[hidden] { display: none; }
-.tray-item { display: flex; flex-direction: column; align-items: stretch; gap: .25rem; width: 100%; padding: .35rem; border-radius: 10px; cursor: pointer; }
-.tray-item img { width: 100%; aspect-ratio: 4 / 5; object-fit: contain; background: var(--tile); border-radius: 6px; }
-.tray-item span { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-.tray-item.on-board { border-color: var(--accent); background: var(--accent-soft); }
+.tray-item { display: block; position: relative; width: 100%; padding: .25rem; border: 0; border-radius: 10px; background: none; box-shadow: none; cursor: pointer; transition: transform .2s ease; }
+.tray-item:hover { background: none; transform: scale(1.06); }
+.tray-item img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; }
+.tray-item.on-board { background: var(--accent-soft); }
+.tray-item.on-board::after { content: ""; position: absolute; top: .3rem; right: .3rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--accent); }
 @media (max-width: 800px) {
   .studio { grid-template-columns: 1fr; }
   .studio-main, .studio-save, .tray { grid-column: 1; grid-row: auto; }
   .tray { position: static; max-height: none; }
-  .tray-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 84px; overflow-x: auto; padding-bottom: .4rem; }
+  .tray-grid { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); max-height: 55vh; overflow-y: auto; }
 }
 
 @media (max-width: 800px) {

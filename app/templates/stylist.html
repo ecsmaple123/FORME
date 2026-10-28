@@ -25,12 +25,12 @@
   </label>
   <div class="ask-row">
     {% if has_place %}<label class="check"><input type="checkbox" name="use_weather" value="1" checked> Dress for today's weather</label>
-    {% else %}<span class="muted small">Set a <a href="/settings#location">weather location</a> to dress for the weather.</span>{% endif %}
+    {% elif request.state.home %}<span class="muted small">Set a <a href="/settings#location">weather location</a> to dress for the weather.</span>{% endif %}
     <button class="primary" type="submit">{{ icon("sparkle") }} <span class="ask-label">Suggest outfits</span><span class="ask-busy">Thinking…</span></button>
   </div>
-  <p class="muted small">It learns from your 👍 and 👎 ({{ counts.like }} liked, {{ counts.dislike }} disliked so far), what you tell it, the outfits you save, and <a href="/settings#stylist">your style</a>.</p>
+  {% if request.state.home %}<p class="muted small">It learns from your 👍 and 👎 ({{ counts.like }} liked, {{ counts.dislike }} disliked so far), what you tell it, the outfits you save, and <a href="/settings#stylist">your style</a>.</p>{% endif %}
 </form>
-{% include "_stylist_notes.html" %}
+{% if request.state.home %}{% include "_stylist_notes.html" %}{% endif %}
 {% endif %}
 <div id="stylist-error" role="alert" class="{{ 'error' if error }}">{{ error }}</div>
 

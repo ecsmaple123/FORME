@@ -16,21 +16,21 @@
       {% if several and shown.position == 0 %}<span class="badge">Cover</span>{% endif %}
       {% if shown.cutout_status == "pending" %}
         {% with photo=shown %}{% include "_cutout_pending.html" %}{% endwith %}
-      {% elif shown.cutout_status in ("none", "failed") %}
+      {% elif shown.cutout_status in ("none", "failed") and request.state.home %}
       <span class="muted small">{{ "Couldn't find a clear item to cut out." if shown.cutout_status == "none" else "Background removal failed." }}</span>
       <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cutout/retry" class="inline-mini">
         <button type="submit">Try again</button>
       </form>
       {% endif %}
-      {% if shown.kind != "fit" and shown.cutout_status != "pending" %}
+      {% if request.state.home and shown.kind != "fit" and shown.cutout_status != "pending" %}
       <a class="button" href="/items/{{ item.id }}/photos/{{ shown.id }}/touchup">Touch up</a>
       {% endif %}
-      {% if several and shown.position != 0 %}
+      {% if request.state.home and several and shown.position != 0 %}
       <form method="post" action="/items/{{ item.id }}/photos/{{ shown.id }}/cover" class="inline-mini">
         <button type="submit">Make cover</button>
       </form>
       {% endif %}
-      {% if several %}
+      {% if request.state.home and several %}
       <a class="button danger" href="/items/{{ item.id }}/photos/{{ shown.id }}/delete">Delete photo…</a>
       {% endif %}
     </div>
@@ -48,7 +48,7 @@
     </ul>
     {% endif %}
 
-    {% if item.photos|length < MAX_PHOTOS %}
+    {% if request.state.home and item.photos|length < MAX_PHOTOS %}
     <details class="panel add-photo" {% if error %}open{% endif %}>
       <summary>+ Add photos</summary>
       <form method="post" action="/items/{{ item.id }}/photos" enctype="multipart/form-data" class="stack">
@@ -84,10 +84,12 @@
       <dt>Added</dt><dd>{{ item.created_at|date }}</dd>
     </dl>
     {% if item.notes %}<p class="notes">{{ item.notes }}</p>{% endif %}
+    {% if request.state.home %}
     <div class="actions">
       <a class="button primary" href="/items/{{ item.id }}/edit">Edit</a>
       <a class="button danger" href="/items/{{ item.id }}/delete">Delete…</a>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

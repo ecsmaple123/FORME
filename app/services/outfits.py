@@ -77,7 +77,7 @@ def default_name(session: Session) -> str:
 
 def save_outfit(session: Session, outfit: Optional[Outfit], name: str, notes: str,
                 placed: List[Placed], source: str = "manual") -> Outfit:
-    """Create (outfit=None; `source` "manual" or "ai") or replace an outfit's name, notes and board."""
+    """Create (outfit=None; `source` "manual", "ai" or "guest") or replace an outfit's name, notes and board."""
     ids = {p.item_id for p in placed}
     found = set(session.exec(select(Item.id).where(Item.id.in_(ids))).all())
     placed = [p for p in placed if p.item_id in found]  # e.g. deleted in another tab meanwhile

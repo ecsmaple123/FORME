@@ -40,7 +40,7 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p class="empty">Your closet is empty. <a href="/add">Add an item</a> first.</p>
+    <p class="empty">Your closet is empty.{% if request.state.home %} <a href="/add">Add an item</a> first.{% endif %}</p>
     {% endif %}
   </aside>
 
@@ -50,12 +50,15 @@
     <label>Name <input name="name" value="{{ name }}" autocapitalize="words" maxlength="200" placeholder="{{ outfit.name if outfit else placeholder }}"></label>
     <label>Notes <textarea name="notes" rows="2" maxlength="4000" placeholder="Occasion, ideas, what to buy…">{{ notes }}</textarea></label>
     <div class="actions">
+      {% if outfit and not may_change %}
+      <button class="primary" type="submit" name="as_new" value="1">Save as a new outfit</button>
+      {% else %}
       <button class="primary" type="submit">{{ "Save changes" if outfit else "Save outfit" }}</button>
-      {% if outfit %}
-      <button type="submit" name="as_new" value="1">Save as new</button>
-      <a class="button ghost" href="/outfits/{{ outfit.id }}">Cancel</a>
+      {% if outfit %}<button type="submit" name="as_new" value="1">Save as new</button>{% endif %}
       {% endif %}
+      {% if outfit %}<a class="button ghost" href="/outfits/{{ outfit.id }}">Cancel</a>{% endif %}
     </div>
+    {% if outfit and not may_change %}<p class="muted small">From outside, outfits made at home are saved as a copy.</p>{% endif %}
   </form>
 </div>
 

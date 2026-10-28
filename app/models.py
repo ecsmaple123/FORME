@@ -141,7 +141,7 @@ class Outfit(SQLModel, table=True):
     notes: str = Field(default="", max_length=4000)
     occasion: str = Field(default="", max_length=80)  # not used by the UI yet
     season: str = Field(default="", max_length=60)  # not used by the UI yet
-    source: str = Field(default="manual", max_length=20)  # manual | ai | photo-import
+    source: str = Field(default="manual", max_length=20)  # manual | ai | guest | photo-import
     created_at: datetime = Field(default_factory=utcnow, index=True)
     updated_at: datetime = Field(default_factory=utcnow)
 

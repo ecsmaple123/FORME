@@ -10,11 +10,14 @@
     <p class="lede">{{ count }} piece{{ "" if count == 1 else "s" }} in your closet.</p>
     <div class="hero-actions">
       <a class="button primary" href="/closet">Open closet {{ icon("arrow") }}</a>
-      <a class="button" href="/add">{{ icon("plus") }} Add item</a>
+      {% if request.state.home %}<a class="button" href="/add">{{ icon("plus") }} Add item</a>
+      {% else %}<a class="button" href="/studio">{{ icon("layers") }} Make an outfit</a>{% endif %}
     </div>
-    {% else %}
+    {% elif request.state.home %}
     <p class="lede">Let's start your wardrobe: add a photo, a store link, or use the bookmark.</p>
     <div class="hero-actions"><a class="button primary" href="/add">{{ icon("plus") }} Add your first item</a></div>
+    {% else %}
+    <p class="lede">The closet is empty so far.</p>
     {% endif %}
   </div>
   {% if has_place %}

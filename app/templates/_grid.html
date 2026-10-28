@@ -18,5 +18,5 @@
 {% elif q or category_id %}
 <p class="empty">Nothing matches. <a href="/closet">Clear filters</a></p>
 {% else %}
-<p class="empty">Your closet is empty. <a href="/add">Add the first item</a>.</p>
+<p class="empty">Your closet is empty.{% if request.state.home %} <a href="/add">Add the first item</a>.{% endif %}</p>
 {% endif %}

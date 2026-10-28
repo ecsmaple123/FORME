@@ -8,7 +8,8 @@
       <p class="muted small">{% if sug %}<span class="ai-tag">{{ icon("sparkle") }} Stylist</span> {% endif %}{{ picks.reason }}</p>
       {% if error and sug %}<p class="error small" role="alert">{{ error }}</p>{% endif %}
     </div>
-    {% if sug %}
+    {% if sug and not request.state.home %}
+    {% elif sug %}
     <div class="pick-actions">
       {% with s = sug.s, where = "picks", target = "#picks" %}{% include "_verdict.html" %}{% endwith %}
       <button class="ghost" type="button" hx-post="/picks/again" hx-target="#picks" hx-swap="outerHTML"

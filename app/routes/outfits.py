@@ -21,6 +21,16 @@ def _outfit_or_404(session: Session, outfit_id: int):
     return outfit
 
 
+def may_change(request: Request, outfit) -> bool:
+    """Guests (visitors from outside) may only change or delete the outfits guests made."""
+    return request.state.home or outfit.source == "guest"
+
+
+def new_source(request: Request, source: str = "manual") -> str:
+    """Guests' outfits are marked, so the stylist doesn't learn them as the owner's taste."""
+    return source if request.state.home else "guest"
+
+
 def _studio(request: Request, session: Session, *, outfit=None, board=None, name: str = "",
             notes: str = "", error: str = "", status_code: int = 200):
     items = library.search_items(session)
@@ -31,7 +41,7 @@ def _studio(request: Request, session: Session, *, outfit=None, board=None, name
         "max": outfits.MAX_ITEMS,
     }
     return templates.TemplateResponse(request, "studio.html", {
-        "outfit": outfit, "error": error,
+        "outfit": outfit, "error": error, "may_change": outfit is not None and may_change(request, outfit),
         "name": name or (outfit.name if outfit else ""),
         "notes": notes or (outfit.notes if outfit else ""),
         "placeholder": outfits.default_name(session),
@@ -49,8 +59,9 @@ def outfit_list(request: Request, session: Session = Depends(get_session)):
 
 @router.get("/outfits/{outfit_id}", response_class=HTMLResponse)
 def outfit_detail(request: Request, outfit_id: int, session: Session = Depends(get_session)):
+    outfit = _outfit_or_404(session, outfit_id)
     return templates.TemplateResponse(request, "outfit_detail.html", {
-        "outfit": _outfit_or_404(session, outfit_id),
+        "outfit": outfit, "may_change": may_change(request, outfit),
     })
 
 
@@ -74,8 +85,11 @@ def save(request: Request, layout: str = Form("[]"), name: str = Form(""), notes
     outfit = None
     if outfit_id.isdigit() and not as_new:
         outfit = _outfit_or_404(session, int(outfit_id))
+        if not may_change(request, outfit):
+            outfit = None  # a guest editing the owner's outfit saves a copy
     try:
-        saved = outfits.save_outfit(session, outfit, name, notes, outfits.parse_layout(layout))
+        saved = outfits.save_outfit(session, outfit, name, notes, outfits.parse_layout(layout),
+                                    source=new_source(request))
     except UserError as exc:
         try:
             board = json.loads(layout)
@@ -89,12 +103,16 @@ def save(request: Request, layout: str = Form("[]"), name: str = Form(""), notes
 
 @router.get("/outfits/{outfit_id}/delete", response_class=HTMLResponse)
 def delete_confirm(request: Request, outfit_id: int, session: Session = Depends(get_session)):
-    return templates.TemplateResponse(request, "confirm_delete_outfit.html", {
-        "outfit": _outfit_or_404(session, outfit_id),
-    })
+    outfit = _outfit_or_404(session, outfit_id)
+    if not may_change(request, outfit):
+        raise HTTPException(403, "Only outfits made from outside can be deleted from outside")
+    return templates.TemplateResponse(request, "confirm_delete_outfit.html", {"outfit": outfit})
 
 
 @router.post("/outfits/{outfit_id}/delete")
-def delete(outfit_id: int, session: Session = Depends(get_session)):
-    outfits.delete_outfit(session, _outfit_or_404(session, outfit_id))
+def delete(request: Request, outfit_id: int, session: Session = Depends(get_session)):
+    outfit = _outfit_or_404(session, outfit_id)
+    if not may_change(request, outfit):
+        raise HTTPException(403, "Only outfits made from outside can be deleted from outside")
+    outfits.delete_outfit(session, outfit)
     return RedirectResponse("/outfits?deleted=1", status_code=303)

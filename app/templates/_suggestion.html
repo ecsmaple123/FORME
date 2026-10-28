@@ -7,7 +7,7 @@
     <p class="small sug-reason">{{ sug.s.reason }}</p>
     <p class="muted small sug-items">{% for i in sug.items %}<a href="/items/{{ i.id }}">{{ i.name }}</a>{{ ", " if not loop.last }}{% endfor %}</p>
     {% if sug.s.request %}<p class="muted small">For: {{ sug.s.request }}</p>{% endif %}
-    {% with s = sug.s, where = "stylist", target = "closest .suggestion" %}{% include "_verdict.html" %}{% endwith %}
+    {% if request.state.home %}{% with s = sug.s, where = "stylist", target = "closest .suggestion" %}{% include "_verdict.html" %}{% endwith %}{% endif %}
     {% if sug.items %}
     <div class="sug-actions">
       {% if sug.s.outfit_id %}

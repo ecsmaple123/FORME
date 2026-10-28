@@ -5,7 +5,7 @@
   <div>
     <p class="wx-title">See the weather here</p>
     <p class="muted small">Set your town in Settings to get today's forecast and what to wear.</p>
-    <a class="button" href="/settings#location">{{ icon("pin") }} Set location</a>
+    {% if request.state.home %}<a class="button" href="/settings#location">{{ icon("pin") }} Set location</a>{% endif %}
   </div>
 </div>
 {% elif error %}

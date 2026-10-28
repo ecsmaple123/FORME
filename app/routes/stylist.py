@@ -10,6 +10,7 @@ from ..db import get_session
 from ..models import Suggestion
 from ..services import ai, outfits, prefs, stylist, weather
 from ..templating import templates
+from .outfits import new_source
 
 router = APIRouter()
 
@@ -88,13 +89,14 @@ def verdict(request: Request, suggestion_id: int, verdict: str = Form(""), note:
 
 
 @router.post("/suggestions/{suggestion_id}/save")
-def save_as_outfit(suggestion_id: int, session: Session = Depends(get_session)):
+def save_as_outfit(request: Request, suggestion_id: int, session: Session = Depends(get_session)):
     s = suggestion_or_404(session, suggestion_id)
     v = view(session, s)
     if not v.items:
         return RedirectResponse("/stylist", status_code=303)
     placed = [outfits.Placed(b["item_id"], b["x"], b["y"], b["w"]) for b in v.board]
-    outfit = outfits.save_outfit(session, None, s.title, s.reason, placed, source="ai")
+    outfit = outfits.save_outfit(session, None, s.title, s.reason, placed,
+                                 source=new_source(request, "ai"))
     s.outfit_id = outfit.id
     session.add(s)
     session.commit()

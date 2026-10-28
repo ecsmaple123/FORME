@@ -73,7 +73,7 @@ def test_login_from_outside(client, outside):
     assert outside.get("/closet").status_code == 200
     assert outside.get("/healthz").json() == {"ok": True}
     page = outside.get("/settings").text
-    assert "Log out" in page and "Current password" in page and "Remove password" not in page
+    assert "Log out" in page and "View only" in page and "Change password" not in page
     r = outside.post("/logout", follow_redirects=False)
     assert r.headers["location"] == "/login"
     assert outside.get("/closet", follow_redirects=False).status_code == 303
@@ -108,23 +108,13 @@ def test_changing_the_password_logs_everyone_out(client, outside):
     assert outside.get("/closet", follow_redirects=False).status_code == 303
 
 
-def test_change_from_outside_needs_the_current_password(client, outside):
+def test_only_home_can_change_or_remove_the_password(client, outside):
     _set_password(client)
     _login(outside)
-    r = outside.post("/settings/password", data={"current": "wrong", "password": "new password 1",
+    r = outside.post("/settings/password", data={"password": "new password 1",
                                                  "confirm": "new password 1"})
-    assert r.status_code == 422 and "current password isn&#39;t right" in r.text
-    r = outside.post("/settings/password", data={"current": PASSWORD, "password": "new password 1",
-                                                 "confirm": "new password 1"}, follow_redirects=False)
-    assert r.status_code == 303 and "set-cookie" in r.headers  # this browser stays logged in
-    assert outside.get("/closet").status_code == 200
-    assert auth.check_password("new password 1")
-
-
-def test_only_home_can_remove_the_password(client, outside):
-    _set_password(client)
-    _login(outside)
-    outside.post("/settings/password/remove")
+    assert r.status_code == 403 and auth.check_password(PASSWORD)
+    assert outside.post("/settings/password/remove").status_code == 403
     assert auth.has_password()
     client.post("/settings/password/remove")
     assert not auth.has_password()

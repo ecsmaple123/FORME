@@ -12,8 +12,8 @@
     {% if outfit.notes %}<p class="notes">{{ outfit.notes }}</p>{% endif %}
     <p class="muted small">Saved {{ outfit.updated_at|date }}</p>
     <div class="actions">
-      <a class="button primary" href="/studio?outfit={{ outfit.id }}">Edit in Studio</a>
-      <a class="button danger" href="/outfits/{{ outfit.id }}/delete">Delete…</a>
+      <a class="button primary" href="/studio?outfit={{ outfit.id }}">{{ "Edit in Studio" if may_change else "Copy in Studio" }}</a>
+      {% if may_change %}<a class="button danger" href="/outfits/{{ outfit.id }}/delete">Delete…</a>{% endif %}
     </div>
     <h2 class="group-title outfit-detail-items">Items <span class="muted">{{ outfit.links|length }}</span></h2>
     <ul class="grid outfit-items">

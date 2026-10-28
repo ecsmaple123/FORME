@@ -29,7 +29,11 @@
     </nav>
     <div class="top-actions">
       <a href="/settings" class="icon-link{{ ' on' if path.startswith('/settings') }}" title="Settings">{{ icon("settings", label="Settings") }}</a>
+      {% if request.state.home %}
       <a class="button primary" href="/add">+ Add<span class="wide-only"> item</span></a>
+      {% else %}
+      <span class="badge" title="From outside the home network the closet can't be changed">View only</span>
+      {% endif %}
     </div>
   </header>
   {% endblock %}

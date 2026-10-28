@@ -1,4 +1,5 @@
 import mimetypes
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlencode
@@ -39,9 +40,16 @@ class UploadLimit:
 
 class LoginRequired:
     """Outside the home network every request needs the password (see services/auth.py), except
-    the login page and the static files it uses. Sets request.state.home for the templates."""
+    the login page and the static files it uses. Sets request.state.home for the templates.
+
+    Visitors from outside are guests: they can look at everything and make outfits (Studio, the
+    stylist), but not change the closet, the categories, the settings or the stylist's memory."""
 
     OPEN = ("/login", "/static/", "/healthz")
+    GUEST_POST = re.compile(r"^/(login|logout|outfits|outfits/\d+/delete|stylist"
+                            r"|suggestions/\d+/save)$")
+    GUEST_NO_GET = re.compile(r"^/(add(/.*)?|items/\d+/(edit|delete)"
+                              r"|items/\d+/photos/\d+/(touchup|delete))$")
 
     def __init__(self, app):
         self.app = app
@@ -63,7 +71,20 @@ class LoginRequired:
             else:
                 resp = RedirectResponse(target, status_code=303)
             return await resp(scope, receive, self._tagged(send))
+        if not home and not self.guest_may(request.method, scope["path"]):
+            from .templating import templates
+            if request.headers.get("HX-Request"):
+                resp = Response("View only from outside your home network.", status_code=403)
+            else:
+                resp = templates.TemplateResponse(request, "view_only.html", {}, status_code=403)
+            return await resp(scope, receive, self._tagged(send))
         return await self.app(scope, receive, self._tagged(send))
+
+    @classmethod
+    def guest_may(cls, method: str, path: str) -> bool:
+        if method in ("GET", "HEAD"):
+            return not cls.GUEST_NO_GET.match(path)
+        return method == "POST" and bool(cls.GUEST_POST.match(path))
 
     @staticmethod
     def _tagged(send):

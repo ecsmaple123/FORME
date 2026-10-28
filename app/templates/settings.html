@@ -6,6 +6,18 @@
 {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
 {% if saved %}<p class="flash">Saved.</p>{% endif %}
 
+{% if not home %}
+<section class="panel stack" id="access">
+  <h2>View only</h2>
+  <p>From outside the home network you can look around the closet and make outfits in the
+    <a href="/studio">Studio</a> or with the <a href="/stylist">Stylist</a>. Adding or changing
+    clothes, categories and settings only works at home.</p>
+  <form method="post" action="/logout" class="actions">
+    <span class="muted small">You're logged in on this device for 30 days.</span>
+    <button type="submit" class="ghost">Log out</button>
+  </form>
+</section>
+{% else %}
 <div class="settings">
   <form method="post" action="/settings" class="panel stack">
     <h2>You</h2>
@@ -112,28 +124,21 @@
     <p class="muted small">
       {% if has_password %}Away from home, FORME asks for this password. At home it doesn't.
       {% else %}No password yet, so FORME can't be opened from outside your home network. Set one to allow it.{% endif %}
-      Everyone with the password sees and edits the same closet.</p>
+      Visitors with the password can look at the closet and make outfits, but not change the closet,
+      the categories or these settings.</p>
     {% if access_error %}<p class="error" role="alert">{{ access_error }}</p>{% endif %}
     {% if access_saved %}<p class="flash">Saved.</p>{% endif %}
     <form method="post" action="/settings/password" class="stack access-form">
-      {% if has_password and not home %}
-      <label>Current password <input type="password" name="current" autocomplete="current-password" required></label>
-      {% endif %}
       <label>{{ "New password" if has_password else "Password" }} <span class="muted small">(at least {{ min_length }} characters)</span>
         <input type="password" name="password" autocomplete="new-password" minlength="{{ min_length }}" required></label>
       <label>Type it again <input type="password" name="confirm" autocomplete="new-password" minlength="{{ min_length }}" required></label>
       <div><button class="primary" type="submit">{{ "Change password" if has_password else "Set password" }}</button></div>
     </form>
-    {% if has_password and home %}
+    {% if has_password %}
     <form method="post" action="/settings/password/remove" class="actions"
           onsubmit="return confirm('Remove the password? FORME stops opening outside your home network.')">
       <span class="muted small">Changing or removing the password logs everyone out.</span>
       <button type="submit" class="danger">Remove password</button>
-    </form>
-    {% elif not home %}
-    <form method="post" action="/logout" class="actions">
-      <span class="muted small">You're logged in on this device for 30 days.</span>
-      <button type="submit" class="ghost">Log out</button>
     </form>
     {% endif %}
   </section>
@@ -175,4 +180,5 @@
     </form>
   </section>
 </div>
+{% endif %}
 {% endblock %}

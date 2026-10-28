@@ -66,26 +66,19 @@ def logout():
 
 
 @router.post("/settings/password")
-def save_password(request: Request, current: str = Form(""), password: str = Form(""),
-                  confirm: str = Form("")):
-    """Set or change the password. Away from home the current one is needed too."""
+def save_password(request: Request, password: str = Form(""), confirm: str = Form("")):
+    """Set or change the password. Only at home: the gate keeps guests out of Settings."""
     from .settings import render_settings_page  # settings imports nothing from here
 
-    if auth.has_password() and not request.state.home and not auth.check_password(current):
-        return render_settings_page(request, access_error="Your current password isn't right.")
     try:
         auth.set_password(password, confirm)
     except auth.AuthError as exc:
         return render_settings_page(request, access_error=str(exc))
-    response = RedirectResponse("/settings?access=1#access", status_code=303)
-    if not request.state.home:  # the new password logged everyone out; keep this browser in
-        _set_cookie(request, response)
-    return response
+    return RedirectResponse("/settings?access=1#access", status_code=303)
 
 
 @router.post("/settings/password/remove")
-def remove_password(request: Request):
-    """Turn outside access off. Only at home, so nobody outside can lock the owner out."""
-    if request.state.home:
-        auth.remove_password()
+def remove_password():
+    """Turn outside access off (only at home, like every change in Settings)."""
+    auth.remove_password()
     return RedirectResponse("/settings?access=1#access", status_code=303)

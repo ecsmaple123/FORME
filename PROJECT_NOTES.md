@@ -183,6 +183,21 @@ PC mirror: `C:\pi-work\wardrobe`. How to use it: README.md. Original plan: PLAN.
   of the sideways strip. CSS + template only, no restart needed (bfb35db). 131 tests.
   Backup before: wardrobe-20261027-161741.
 
+- **2026-10-28: outside visitors are view-only guests** (user: "make it so the outside access with the
+  password is read only and they cannot edit the closet? But they can use studio or make outfits").
+  Anyone not at home (tunnel, VPN, the Pi itself) who is logged in is a guest. `LoginRequired` in
+  main.py: guests may POST only to /login, /logout, /outfits, /outfits/N/delete, /stylist,
+  /suggestions/N/save; GETs of /add*, item edit/delete and photo touch-up/delete pages are blocked
+  too. Blocked = 403 with `view_only.html` (plain text for htmx). Templates hide the edit controls
+  with `request.state.home` (header shows a "View only" badge instead of + Add; Settings is just a
+  view-only note + Log out; no 👍/👎, notes or Ask again for guests). Guest outfits get
+  `source="guest"` (also suggestions they save), so the stylist doesn't learn them as the owner's
+  taste; guests can edit/delete only guest outfits, and saving an outfit made at home makes a copy
+  (`may_change` / `new_source` in routes/outfits.py). The password can only be changed or removed at
+  home now (the current-password check from outside is gone). 2d5b9c2, 132 tests (tests/test_guest.py).
+  Backup before: wardrobe-20261028-154630. No migration (source is a free string).
+  Note: the owner on the VPN or mobile data is a guest too; per-person logins would be the fix.
+
 ## Where things stand (2026-10-25, end of session)
 - Everything is live and committed. Code pushed up to FORME 80d6561; this notes update is on the Pi
   only (push with the next change). No open bugs.
@@ -321,14 +336,14 @@ sha256 e209dda5…fb447). These are the last releases for 3.9; newer ones need a
 ## Security notes
 - **Public since 2026-10-25** through the Cloudflare quick tunnel, behind one shared password (see the
   status log entry "Outside access"). At home (192.168.0.0/24, not via the tunnel) there's no login;
-  VPN and tunnel visitors log in. The password was given in chat once; the user was told to change it.
+  VPN and tunnel visitors log in and are view-only guests (since 2026-10-28). The password was given in chat once; the user was told to change it.
   Wrong-password limits are in memory (reset on restart). Responses carry `X-Robots-Tag: noindex`.
 - With the site public, these matter more: the free Gemini quota (only reachable after login) and
   the SSRF guard below (only after login).
 - SSRF guard (`app/services/fetch.py`): http/https only; every resolved address must be public; every
   redirect hop is re-checked; max 5 redirects; 10 s timeout; 3 MB HTML / 20 MB image caps.
   Remaining gap: DNS could change between the check and the connect (DNS rebinding). Acceptable
-  because only logged-in users can make the Pi fetch anything.
+  because only home visitors can make the Pi fetch anything (adding is blocked for guests).
 - Uploads are capped at 20 MB by a middleware before parsing; Pillow's decompression-bomb guard is
   an error, not a warning.
 - Templates are auto-escaped; the source URL must be http(s), so there are no `javascript:` links.
